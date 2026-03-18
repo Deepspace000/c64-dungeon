@@ -65,7 +65,7 @@ function bindControls() {
             return;
         }
 
-        if (state.appState === 'intro' && (e.code === 'Space' || e.code === 'Enter')) {
+        if (state.appState === 'intro') {
             document.getElementById('intro-screen').classList.add('hidden');
             state.appState = 'playing';
             playGameMusic();
@@ -74,7 +74,7 @@ function bindControls() {
             return;
         }
 
-        if (state.appState === 'transition' && state.transitionReady && (e.code === 'Space' || e.code === 'Enter')) {
+        if (state.appState === 'transition' && state.transitionReady) {
             nextLevel();
             return;
         }

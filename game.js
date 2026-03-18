@@ -593,67 +593,66 @@ const wraithImg = new Image(); let wraithLoaded = false;
 wraithImg.onload = () => { wraithLoaded = true; }; wraithImg.src = "c64_wraith.png";
 
 const caveSlimeImg = new Image(); let caveSlimeLoaded = false;
-caveSlimeImg.onload = () => { caveSlimeLoaded = true; }; caveSlimeImg.src = "cave_slime.png";
+caveSlimeImg.onload = () => { caveSlimeLoaded = true; }; caveSlimeImg.src = "cave_slime.png?v=2";
 
 const giantRatImg = new Image(); let giantRatLoaded = false;
-giantRatImg.onload = () => { giantRatLoaded = true; }; giantRatImg.src = "giant_rat.png";
+giantRatImg.onload = () => { giantRatLoaded = true; }; giantRatImg.src = "giant_rat.png?v=2";
 
 const mimicChestImg = new Image(); let mimicChestLoaded = false;
-mimicChestImg.onload = () => { mimicChestLoaded = true; }; mimicChestImg.src = "mimic_chest.png";
+mimicChestImg.onload = () => { mimicChestLoaded = true; }; mimicChestImg.src = "mimic_chest.png?v=2";
 
 const restlessZombieImg = new Image(); let restlessZombieLoaded = false;
-restlessZombieImg.onload = () => { restlessZombieLoaded = true; }; restlessZombieImg.src = "restless_zombie.png";
+restlessZombieImg.onload = () => { restlessZombieLoaded = true; }; restlessZombieImg.src = "restless_zombie.png?v=2";
 
 const blindWardenImg = new Image(); let blindWardenLoaded = false;
-blindWardenImg.onload = () => { blindWardenLoaded = true; }; blindWardenImg.src = "blind_warden.png";
+blindWardenImg.onload = () => { blindWardenLoaded = true; }; blindWardenImg.src = "blind_warden.png?v=2";
 
 const ghostlyScribeImg = new Image(); let ghostlyScribeLoaded = false;
-ghostlyScribeImg.onload = () => { ghostlyScribeLoaded = true; }; ghostlyScribeImg.src = "ghostly_scribe.png";
+ghostlyScribeImg.onload = () => { ghostlyScribeLoaded = true; }; ghostlyScribeImg.src = "ghostly_scribe.png?v=2";
 
 const echoWraithImg = new Image(); let echoWraithLoaded = false;
-echoWraithImg.onload = () => { echoWraithLoaded = true; }; echoWraithImg.src = "echo_wraith.png";
+echoWraithImg.onload = () => { echoWraithLoaded = true; }; echoWraithImg.src = "echo_wraith.png?v=2";
 
 const minotaurImg = new Image(); let minotaurLoaded = false;
-minotaurImg.onload = () => { minotaurLoaded = true; }; minotaurImg.src = "minotaur.png";
+minotaurImg.onload = () => { minotaurLoaded = true; }; minotaurImg.src = "minotaur.png?v=2";
 
 const abyssalKnightImg = new Image(); let abyssalKnightLoaded = false;
-abyssalKnightImg.onload = () => { abyssalKnightLoaded = true; }; abyssalKnightImg.src = "abyssal_knight.png";
+abyssalKnightImg.onload = () => { abyssalKnightLoaded = true; }; abyssalKnightImg.src = "abyssal_knight.png?v=2";
 
 const deepDwellerImg = new Image(); let deepDwellerLoaded = false;
-deepDwellerImg.onload = () => { deepDwellerLoaded = true; }; deepDwellerImg.src = "deep_dweller.png";
+deepDwellerImg.onload = () => { deepDwellerLoaded = true; }; deepDwellerImg.src = "deep_dweller.png?v=2";
 
 const undeadKingImg = new Image(); let undeadKingLoaded = false;
-undeadKingImg.onload = () => { undeadKingLoaded = true; }; undeadKingImg.src = "undead_king.png";
+undeadKingImg.onload = () => { undeadKingLoaded = true; }; undeadKingImg.src = "undead_king.png?v=2";
 
 const bloodstoneGolemImg = new Image(); let bloodstoneGolemLoaded = false;
-bloodstoneGolemImg.onload = () => { bloodstoneGolemLoaded = true; }; bloodstoneGolemImg.src = "bloodstone_golem.png";
+bloodstoneGolemImg.onload = () => { bloodstoneGolemLoaded = true; }; bloodstoneGolemImg.src = "bloodstone_golem.png?v=2";
 
 const slimeLordImg = new Image(); let slimeLordLoaded = false;
-slimeLordImg.onload = () => { slimeLordLoaded = true; }; slimeLordImg.src = "slime_lord.png";
+slimeLordImg.onload = () => { slimeLordLoaded = true; }; slimeLordImg.src = "slime_lord.png?v=2";
 
 const vaultGuardianImg = new Image(); let vaultGuardianLoaded = false;
-vaultGuardianImg.onload = () => { vaultGuardianLoaded = true; }; vaultGuardianImg.src = "vault_guardian.png";
+vaultGuardianImg.onload = () => { vaultGuardianLoaded = true; }; vaultGuardianImg.src = "vault_guardian.png?v=2";
 
 const ironGiantImg = new Image(); let ironGiantLoaded = false;
-ironGiantImg.onload = () => { ironGiantLoaded = true; }; ironGiantImg.src = "iron_giant.png";
+ironGiantImg.onload = () => { ironGiantLoaded = true; }; ironGiantImg.src = "iron_giant.png?v=2";
 
 const voidCultistImg = new Image(); let voidCultistLoaded = false;
-voidCultistImg.onload = () => { voidCultistLoaded = true; }; voidCultistImg.src = "void_cultist.png";
+voidCultistImg.onload = () => { voidCultistLoaded = true; }; voidCultistImg.src = "void_cultist.png?v=2";
 
 const boneDragonImg = new Image(); let boneDragonLoaded = false;
-boneDragonImg.onload = () => { boneDragonLoaded = true; }; boneDragonImg.src = "bone_dragon.png";
+boneDragonImg.onload = () => { boneDragonLoaded = true; }; boneDragonImg.src = "bone_dragon.png?v=2";
 
 const whisperingTerrorImg = new Image(); let whisperingTerrorLoaded = false;
-whisperingTerrorImg.onload = () => { whisperingTerrorLoaded = true; }; whisperingTerrorImg.src = "whispering_terror.png";
+whisperingTerrorImg.onload = () => { whisperingTerrorLoaded = true; }; whisperingTerrorImg.src = "whispering_terror.png?v=2";
 
 const depthCoreImg = new Image(); let depthCoreLoaded = false;
-depthCoreImg.onload = () => { depthCoreLoaded = true; }; depthCoreImg.src = "depth_core.png";
+depthCoreImg.onload = () => { depthCoreLoaded = true; }; depthCoreImg.src = "depth_core.png?v=2";
 
 // SVG-based item sprites
-const potionSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32"><rect x="8" y="0" width="8" height="6" fill="#664400"/><rect x="6" y="6" width="12" height="4" fill="#777777"/><rect x="4" y="10" width="16" height="18" rx="3" fill="#880000"/><rect x="7" y="12" width="4" height="6" rx="1" fill="#FF7777" opacity="0.6"/></svg>`;
 const potionImg = new Image(); let potionLoaded = false;
 potionImg.onload = () => { potionLoaded = true; };
-potionImg.src = 'data:image/svg+xml;base64,' + btoa(potionSVG);
+potionImg.src = 'health_potion.png?v=2';
 
 const chestSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24"><rect x="0" y="4" width="32" height="20" rx="2" fill="#664400"/><rect x="0" y="4" width="32" height="10" fill="#884400"/><rect x="13" y="10" width="6" height="6" rx="1" fill="#EEEE77"/><rect x="0" y="13" width="32" height="2" fill="#333333"/></svg>`;
 const chestImg = new Image(); let chestLoaded = false;
@@ -678,12 +677,28 @@ const blackKeyImg = new Image(); let blackKeyLoaded = false;
 blackKeyImg.onload = () => { blackKeyLoaded = true; };
 blackKeyImg.src = 'data:image/svg+xml;base64,' + btoa(blackKeySVG);
 
-const spikeUpSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><polygon points="4,32 8,8 12,32" fill="#777777" stroke="#333333" stroke-width="1"/><polygon points="12,32 16,4 20,32" fill="#BBBBBB" stroke="#333333" stroke-width="1"/><polygon points="20,32 24,10 28,32" fill="#777777" stroke="#333333" stroke-width="1"/></svg>`;
+const spikeUpSVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <g stroke="#000000" stroke-width="1">
+            <path d="M 25 80 L 30 0 L 35 80 Z" fill="#BBBBBB" />
+            <path d="M 45 80 L 50 0 L 55 80 Z" fill="#BBBBBB" />
+            <path d="M 65 80 L 70 0 L 75 80 Z" fill="#BBBBBB" />
+            <rect x="15" y="80" width="70" height="10" fill="#333333" />
+        </g>
+    </svg>`;
 const spikeUpImg = new Image(); let spikeUpLoaded = false;
 spikeUpImg.onload = () => { spikeUpLoaded = true; };
 spikeUpImg.src = 'data:image/svg+xml;base64,' + btoa(spikeUpSVG);
 
-const spikeDownSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 8"><rect x="2" y="4" width="28" height="4" rx="1" fill="#555555"/><circle cx="8" cy="4" r="2" fill="#777777"/><circle cx="16" cy="4" r="2" fill="#777777"/><circle cx="24" cy="4" r="2" fill="#777777"/></svg>`;
+const spikeDownSVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <g stroke="#000000" stroke-width="1">
+            <ellipse cx="30" cy="85" rx="8" ry="4" fill="#000000" />
+            <ellipse cx="50" cy="85" rx="8" ry="4" fill="#000000" />
+            <ellipse cx="70" cy="85" rx="8" ry="4" fill="#000000" />
+            <rect x="15" y="80" width="70" height="10" fill="#333333" />
+        </g>
+    </svg>`;
 const spikeDownImg = new Image(); let spikeDownLoaded = false;
 spikeDownImg.onload = () => { spikeDownLoaded = true; };
 spikeDownImg.src = 'data:image/svg+xml;base64,' + btoa(spikeDownSVG);
@@ -1354,8 +1369,11 @@ function init() {
     }
 
     document.addEventListener('keydown', (e) => {
-        if (state.appState === 'dead' && e.code === 'Space') {
+        if (state.appState === 'dead') {
             if (Date.now() - state.deathTime > 3000) location.reload();
+        }
+        if (state.appState === 'transition' && state.transitionReady) {
+            nextLevel();
         }
     });
 
