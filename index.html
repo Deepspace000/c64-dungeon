@@ -225,7 +225,24 @@
         </div>
     </div>
 
-    <script src="game.js?v=26"></script>
+    <!-- game.js first: defines all globals (state, colors, ctx, audio, assets, constants) -->
+    <script src="game.js?v=27"></script>
+    <!-- Module scripts: order doesn't matter as they only define functions -->
+    <script src="renderer.js?v=27"></script>
+    <script src="entities.js?v=27"></script>
+    <script src="effects.js?v=27"></script>
+    <script src="ui.js?v=27"></script>
+    <script src="combat.js?v=27"></script>
+    <script src="movement.js?v=27"></script>
+    <script src="input.js?v=27"></script>
+    <!-- Boot after all scripts loaded -->
+    <script>
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', boot);
+        } else {
+            boot();
+        }
+    </script>
     <script>
         (function fitToViewport() {
             const DESIGN_W = 900, DESIGN_H = 640;
