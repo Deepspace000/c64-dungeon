@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://localhost:65506/)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(netstat -ano)",
+      "Bash(claude update:*)",
+      "Bash(npm update:*)",
+      "Bash(ls \"/c/Users/mirko/Downloads/workspace/c64-dungeon/\"*.png)",
+      "Bash(xargs -I{} basename {})",
+      "Bash(cp \"/c/Users/mirko/Downloads/THE DEEPEST DEPTHS FILES/cave_slime.png\" \"/c/Users/mirko/Downloads/workspace/c64-dungeon/cave_slime.png\")",
+      "Bash(cp \"/c/Users/mirko/Downloads/THE DEEPEST DEPTHS FILES/giant_rat.png\" \"/c/Users/mirko/Downloads/workspace/c64-dungeon/giant_rat.png\")",
+      "Bash(cp \"/c/Users/mirko/Downloads/THE DEEPEST DEPTHS FILES/mimic_chest.png\" \"/c/Users/mirko/Downloads/workspace/c64-dungeon/mimic_chest.png\")",
+      "Bash(ls -la /c/Users/mirko/Downloads/workspace/c64-dungeon/*.js /c/Users/mirko/Downloads/workspace/c64-dungeon/*.html /c/Users/mirko/Downloads/workspace/c64-dungeon/*.css)",
+      "Bash(wc -l /c/Users/mirko/Downloads/workspace/c64-dungeon/*.js)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

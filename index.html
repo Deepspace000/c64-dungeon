@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Deepest Depths</title>
+    <!-- C64 Style Pixel Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=11">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Persistent Level Header -->
+        <div id="level-header-container">
+            <span id="level-title-display">LEVEL 1: The Red Chambers</span>
+        </div>
+
+        <!-- Column 1: Center (Quest, Minimap, Menu) -->
+        <div class="app-col" id="col-center">
+            <div class="panel-section fixed-height">
+                <button id="btn-menu" class="splash-btn menu-btn">MENU</button>
+            </div>
+
+            <div class="panel-section fixed-height" id="minimap-panel">
+                <h2>MAGIC MAP</h2>
+                <div id="minimap-container">
+                    <!-- Minimap will be drawn here -->
+                    <canvas id="minimap-canvas" width="124" height="124"></canvas>
+                </div>
+            </div>
+
+            <div class="panel-section fixed-height quest-section flex-grow">
+                <h2>QUESTS</h2>
+                <div id="quest-text">Destroy all creatures on level for reward.</div>
+                <div id="quest-progress">0/5 Slain</div>
+            </div>
+        </div>
+
+        <!-- Column 2: Game & Fighting -->
+        <div class="app-col" id="col-game">
+            <div id="crt-container">
+                <canvas id="game-canvas" width="400" height="300"></canvas>
+                <div id="scanlines"></div>
+            </div>
+
+            <div class="panel-section section-fighting" id="fighting-panel">
+                <h2>FIGHTING (ATK: <span id="attack-val-text">1</span> | DEF: <span id="defense-val-text">0</span>)</h2>
+                <div class="hands">
+                    <div class="hand" id="left-hand">
+                        <span class="hand-label">LEFT</span>
+                        <div class="item">EMPTY</div>
+                    </div>
+                    <div class="hand" id="right-hand">
+                        <span class="hand-label">RIGHT</span>
+                        <div class="item">EMPTY</div>
+                    </div>
+                </div>
+                <div class="armour-container">
+                    <div class="hand" id="armour-slot">
+                        <span class="hand-label">ARMOUR</span>
+                        <div class="item">EMPTY</div>
+                    </div>
+                </div>
+                <button id="attack-btn">ATTACK</button>
+            </div>
+        </div>
+
+        <!-- Column 3: Controls, Stats, Inventory -->
+        <div class="app-col" id="col-right">
+            <div class="panel-section fixed-height" id="move-panel">
+                <h2>MOVE</h2>
+                <div class="controls-wrap">
+                    <div class="control-row">
+                        <button class="ctrl-btn" id="btn-q">Q</button>
+                        <button class="ctrl-btn" id="btn-w">W</button>
+                        <button class="ctrl-btn" id="btn-e">E</button>
+                    </div>
+                    <div class="control-row">
+                        <button class="ctrl-btn" id="btn-a">A</button>
+                        <button class="ctrl-btn" id="btn-s">S</button>
+                        <button class="ctrl-btn" id="btn-d">D</button>
+                    </div>
+                    <div class="control-row">
+                        <button class="ctrl-btn" id="wait-btn">Z(WAIT)</button>
+                    </div>
+                </div>
+                <div class="control-desc">
+                    W:Fwd S:Back A:TurnL D:TurnR Q:StrafeL E:StrafeR Z:Wait
+                </div>
+            </div>
+
+            <div class="panel-section fixed-height" id="player-panel">
+                <h2>PLAYER</h2>
+                <div class="player-stats">
+                    HP: <span id="hp-text">20/20</span><br>
+                    Gold: <span id="gold-text" class="gold-val">0</span><br>
+                    <label class="auto-potion-label" title="Drink potion automatically when HP &lt; 20%">
+                        <input type="checkbox" id="auto-potion-cb"> Auto-Potion
+                    </label>
+                </div>
+                <div class="health-bar-container">
+                    <div id="health-bar-fill"></div>
+                </div>
+            </div>
+
+            <div class="panel-section section-inventory flex-grow">
+                <h2>INVENTORY</h2>
+                <ul id="inventory-list">
+                    <!-- Items go here -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Splash Screen Overlay -->
+        <div id="splash-screen">
+            <h1 id="game-title">The<br>Deepest<br>Depths</h1>
+            <div id="splash-menu">
+                <button class="splash-btn hidden" id="btn-resume">RESUME</button>
+                <button class="splash-btn" id="btn-start">START</button>
+                <button class="splash-btn" id="btn-save">SAVE</button>
+                <button class="splash-btn" id="btn-load">LOAD</button>
+                <button class="splash-btn" id="btn-sound">SOUND</button>
+                <button class="splash-btn" id="btn-settings">SETTINGS</button>
+                <button class="splash-btn" id="btn-info">INFO</button>
+                <button class="splash-btn" id="btn-exit">EXIT</button>
+
+                <!-- Dev Warp Buttons -->
+                <div class="dev-warp-section">
+                    <span class="dev-warp-heading">TEST WARP</span>
+                    <div id="dev-warp-container" class="dev-warp-grid">
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(1)">L1</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(2)">L2</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(3)">L3</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(4)">L4</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(5)">L5</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(6)">L6</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(7)">L7</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(8)">L8</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(9)">L9</button>
+                        <button class="splash-btn dev-btn" onclick="warpToLevel(10)">L10</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Info Screen -->
+            <div id="info-overlay" class="hidden">
+                <h2>Controls</h2>
+                <p>W: Move Forward<br>S: Move Backward<br>A: Turn Left<br>D: Turn Right<br>Q: Strafe Left<br>E: Strafe
+                    Right<br><br>Click monsters or use 'Attack' to fight.<br>Click Inventory items to equip/use.</p>
+                <button class="splash-btn" id="btn-close-info">CLOSE</button>
+            </div>
+            <!-- Sound Screen -->
+            <div id="sound-overlay" class="hidden">
+                <h2>Sound</h2>
+                <div class="sound-control-group">
+                    <label for="vol-music">Music Vol:</label><br><br>
+                    <input type="range" id="vol-music" name="vol-music" title="Music Volume" min="0" max="1" step="0.1"
+                        value="0.5" class="sound-slider">
+                </div>
+                <div class="sound-control-group">
+                    <label for="vol-sfx">SFX Vol:</label><br><br>
+                    <input type="range" id="vol-sfx" name="vol-sfx" title="SFX Volume" min="0" max="1" step="0.1"
+                        value="0.5" class="sound-slider">
+                </div>
+                <button class="splash-btn sound-back-btn" id="btn-close-sound">BACK</button>
+            </div>
+            <!-- Settings Screen -->
+            <div id="settings-overlay" class="hidden">
+                <h2>Settings</h2>
+                <div class="sound-control-group settings-section">
+                    <label>Screen Size:</label><br><br>
+                    <select id="screen-size-select" class="settings-select" title="Screen Size">
+                        <option value="1x">Default (1x)</option>
+                        <option value="2x">Large (2x)</option>
+                        <option value="3x">Larger (3x)</option>
+                    </select>
+                </div>
+                <button class="splash-btn sound-back-btn settings-close-btn" id="btn-close-settings">BACK</button>
+            </div>
+        </div>
+
+        <!-- Intro Screen Overlay -->
+        <div id="intro-screen" class="hidden">
+            <div class="intro-box">
+                <p>You are on a quest to enter the deepest depth. No soul has ever returned from this dark festering
+                    place. Get ready to fulfil your DESTINY</p>
+                <p class="blink">press space or click to start</p>
+            </div>
+        </div>
+
+        <!-- Level Transition Overlay -->
+        <div id="transition-screen" class="hidden">
+            <img id="stairs-bg" src="creepy_stairs_c64.png" alt="Creepy Stairs">
+            <div class="transition-text">
+                <p id="transition-message">You descend further into the depths...</p>
+                <p id="transition-prompt" class="hidden blink">press space or click to continue your quest</p>
+            </div>
+        </div>
+
+        <!-- Mandatory Audio Init Overlay -->
+        <div id="startup-overlay">
+            <h2 class="blink">CLICK ANYWHERE TO ENTER</h2>
+        </div>
+
+        <!-- Death Screen Overlay -->
+        <div id="death-screen" class="hidden">
+            <h1 class="fantasy-title">YOU DIED</h1>
+            <div id="coffin-graphic"></div>
+            <p class="blink">press space or click to return to menu</p>
+        </div>
+
+
+    </div>
+
+    <!-- Tutorial Overlay: outside #app so zoom doesn't affect fixed positioning -->
+    <div id="tutorial-overlay" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;">
+        <div id="tutorial-box" style="background:#000;border:4px solid #70a4b2;padding:30px;max-width:448px;width:90%;display:flex;flex-direction:column;gap:18px;font-family:'Press Start 2P',monospace;color:#70a4b2;box-sizing:border-box;">
+            <h2>WELCOME, ADVENTURER</h2>
+            <p id="tutorial-text">Welcome to the Deepest Depths — a dungeon crawler with a difference: This is a game where you never gain levels, and have to use your smarts to defeat the denizens of the depths, find gold, weapons and potions. You need to reach the bottom of the depths to conquer the darkest overlord at level 20 — and each level features a different setting and monsters — The quests will guide you. Work out who to attack first and don't forget to equip your weapons!</p>
+            <label id="tutorial-no-show-label">
+                <input type="checkbox" id="tutorial-no-show"> Don't show this again
+            </label>
+            <button class="splash-btn" id="tutorial-close-btn">OK, LET'S GO!</button>
+        </div>
+    </div>
+
+    <script src="game.js?v=26"></script>
+    <script>
+        (function fitToViewport() {
+            const DESIGN_W = 900, DESIGN_H = 640;
+            function apply() {
+                const scale = Math.min(
+                    window.innerWidth  / DESIGN_W,
+                    window.innerHeight / DESIGN_H,
+                    0.8
+                );
+                document.documentElement.style.zoom = scale;
+            }
+            apply();
+            window.addEventListener('resize', apply);
+        })();
+    </script>
+</body>
+
+</html>

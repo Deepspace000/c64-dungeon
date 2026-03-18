@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #000; color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+  canvas { width: 240px; height: 360px; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<canvas id="c" width="40" height="60"></canvas>
+<script>
+  const ctx = document.getElementById('c').getContext('2d');
+  
+  const skel = new Image();
+  skel.src = 'c64_skeleton.png';
+  
+  const robeSVG = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 60">
+      <!-- Back of hood -->
+      <path d="M 15 0 Q 20 -2 25 0 L 28 10 L 12 10 Z" fill="#220044"/>
+      
+      <!-- Left side of robe -->
+      <path d="M 12 10 Q 15 15 11 20 L 10 45 Q 15 50 18 45 L 18 20 Q 16 15 15 10 Z" fill="#330055"/>
+      
+      <!-- Right side of robe -->
+      <path d="M 28 10 Q 25 15 29 20 L 30 45 Q 25 50 22 45 L 22 20 Q 24 15 25 10 Z" fill="#330055"/>
+
+      <!-- Top of hood -->
+      <path d="M 15 0 Q 20 -2 25 0 Q 27 2 28 5 Q 20 2 12 5 Q 13 2 15 0 Z" fill="#440066"/>
+      
+      <!-- Sides of hood -->
+      <path d="M 12 5 Q 15 10 14 13 L 12 10 Z" fill="#440066"/>
+      <path d="M 28 5 Q 25 10 26 13 L 28 10 Z" fill="#440066"/>
+  </svg>
+  `;
+  const robe = new Image();
+  robe.src = 'data:image/svg+xml;base64,' + btoa(robeSVG);
+
+  Promise.all([
+    new Promise(r => skel.onload = r),
+    new Promise(r => robe.onload = r)
+  ]).then(() => {
+    ctx.drawImage(skel, 0, 0, 40, 60);
+    ctx.drawImage(robe, 0, 0, 40, 60);
+  });
+</script>
+</body>
+</html>

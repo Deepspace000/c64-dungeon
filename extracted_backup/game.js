@@ -1,0 +1,3126 @@
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+// Disable smoothing for pixelated rendering
+ctx.imageSmoothingEnabled = false;
+
+const minimapCanvas = document.getElementById('minimap-canvas');
+const minimapCtx = minimapCanvas.getContext('2d');
+minimapCtx.imageSmoothingEnabled = false;
+
+// Audio Context Setup
+let audioCtx;
+let droneOsc = null;
+let droneGain = null;
+let musicGainNode, sfxGainNode;
+let currentMusicContext = null;
+let ambientTimerEvent = null; // Track ambient setTimeout
+
+function initAudio() {
+    if (audioCtx) return;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        musicGainNode = audioCtx.createGain();
+        musicGainNode.gain.value = document.getElementById('vol-music') ? parseFloat(document.getElementById('vol-music').value) : 0.5;
+        musicGainNode.connect(audioCtx.destination);
+
+        sfxGainNode = audioCtx.createGain();
+        sfxGainNode.gain.value = document.getElementById('vol-sfx') ? parseFloat(document.getElementById('vol-sfx').value) : 0.5;
+        sfxGainNode.connect(audioCtx.destination);
+    } catch (e) {
+        console.warn('Web Audio API not supported', e);
+    }
+}
+
+function stopMusic() {
+    if (currentMusicContext && currentMusicContext.stop) {
+        currentMusicContext.stop();
+    }
+    if (ambientTimerEvent) {
+        clearTimeout(ambientTimerEvent);
+        ambientTimerEvent = null;
+    }
+    if (droneOsc) {
+        droneOsc.stop();
+        droneOsc.disconnect();
+        droneOsc = null;
+    }
+}
+
+function playSplashMusic() {
+    stopMusic();
+    if (!audioCtx) return;
+
+    let isPlaying = true;
+    currentMusicContext = { stop: () => { isPlaying = false; } };
+
+    let noteIdx = 0;
+    const tempo = 120; // bpm
+    const tickTime = 60 / (tempo * 4); // 16th notes
+    let nextNoteTime = audioCtx.currentTime + 0.1;
+
+    function schedule() {
+        if (!isPlaying) return;
+        while (nextNoteTime < audioCtx.currentTime + 0.1) {
+            playFugueNote(nextNoteTime);
+            nextNoteTime += tickTime;
+        }
+        requestAnimationFrame(schedule);
+    }
+
+    function playFugueNote(time) {
+        const t = noteIdx % 64;
+        let f = 0;
+
+        // D minor scale: D, E, F, G, A, Bb, C, C#
+        const dMin = [293.66, 329.63, 349.23, 392.00, 440.00, 466.16, 523.25, 554.37, 587.33];
+
+        if (t < 16) {
+            const motif = [0, 2, 4, 3, 2, 1, 2, 0, 0, 2, 4, 3, 2, 1, 2, 0];
+            if (motif[t] !== null) f = dMin[motif[t]];
+        } else if (t < 32) {
+            const motif = [1, 3, 5, 4, 3, 2, 3, 1, 1, 3, 5, 4, 3, 2, 3, 1];
+            if (motif[t - 16] !== null) f = dMin[motif[t - 16]];
+        } else if (t < 48) {
+            const motif = [0, 4, 8, 4, 2, 4, 0, 4, 0, 4, 8, 4, 2, 4, 0, 4];
+            f = dMin[motif[t - 32]];
+        } else {
+            const motif = [4, 7, 8, 7, 8, 7, 4, 7, 8, 7, 4, 2, 1, 0, 0, 0];
+            f = dMin[motif[t - 48]];
+        }
+
+        noteIdx++;
+        if (f === 0) return;
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square'; // harpsichord
+        osc.frequency.value = f;
+
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.3, time + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+
+        osc.connect(gain);
+        gain.connect(musicGainNode);
+
+        osc.start(time);
+        osc.stop(time + 0.2);
+    }
+    schedule();
+}
+
+function playIntroMusic() {
+    stopMusic();
+    if (!audioCtx) return;
+
+    let isPlaying = true;
+    currentMusicContext = { stop: () => { isPlaying = false; } };
+
+    let noteIdx = 0;
+    const tempo = 180;
+    const tickTime = 60 / (tempo * 4); // 32nd notes
+    let nextNoteTime = audioCtx.currentTime + 0.1;
+
+    function schedule() {
+        if (!isPlaying) return;
+        while (nextNoteTime < audioCtx.currentTime + 0.1) {
+            playDimNote(nextNoteTime);
+            nextNoteTime += tickTime;
+        }
+        requestAnimationFrame(schedule);
+    }
+
+    function playDimNote(time) {
+        // Diminished 7th chord (C Eb Gb A)
+        const dim = [130.81, 155.56, 185.00, 220.00, 261.63, 311.13, 369.99, 440.00, 523.25, 622.25, 739.99, 880.00];
+        const idx = Math.floor((Math.sin(noteIdx * 0.1) * 0.5 + 0.5) * (dim.length - 1));
+        const idx2 = (idx + (noteIdx % 3)) % dim.length;
+        const f = dim[idx2];
+
+        noteIdx++;
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = f;
+
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.2, time + 0.05);
+        gain.gain.linearRampToValueAtTime(0, time + 0.4);
+
+        osc.connect(gain);
+        gain.connect(musicGainNode);
+
+        osc.start(time);
+        osc.stop(time + 0.4);
+    }
+    schedule();
+}
+
+function playGameMusic() {
+    stopMusic();
+    if (!audioCtx) return;
+
+    const now = audioCtx.currentTime;
+
+    // 1. Core Drone (Low A)
+    let droneOsc = audioCtx.createOscillator();
+    let droneGain = audioCtx.createGain();
+    droneOsc.type = 'sine';
+    droneOsc.frequency.value = 55;
+
+    const droneLfo = audioCtx.createOscillator();
+    droneLfo.type = 'sine';
+    droneLfo.frequency.value = 0.1;
+
+    const droneLfoGain = audioCtx.createGain();
+    droneLfoGain.gain.value = 5;
+
+    droneLfo.connect(droneLfoGain);
+    droneLfoGain.connect(droneOsc.frequency);
+
+    droneGain.gain.value = 0.0;
+    droneGain.gain.setTargetAtTime(0.3, now, 2.0);
+
+    const droneFilter = audioCtx.createBiquadFilter();
+    droneFilter.type = 'lowpass';
+    droneFilter.frequency.value = 400;
+    droneFilter.Q.value = 5;
+
+    droneOsc.connect(droneGain);
+    droneGain.connect(droneFilter);
+    droneFilter.connect(musicGainNode);
+
+    // 2. Parallax Stereo Wind (Two Noise Sources, Panned and LFO'd differently)
+    const bufferSize = audioCtx.sampleRate * 2; // 2 seconds of noise
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+    }
+
+    // Wind Layer 1 (Left, slower LFO)
+    const windSource1 = audioCtx.createBufferSource();
+    windSource1.buffer = noiseBuffer;
+    windSource1.loop = true;
+
+    const windFilter1 = audioCtx.createBiquadFilter();
+    windFilter1.type = 'lowpass';
+    windFilter1.frequency.value = 100;
+    windFilter1.Q.value = 3;
+
+    const windLFO1 = audioCtx.createOscillator();
+    windLFO1.type = 'sine';
+    windLFO1.frequency.value = 0.15;
+
+    const windLFOGain1 = audioCtx.createGain();
+    windLFOGain1.gain.value = 400;
+
+    windLFO1.connect(windLFOGain1);
+    windLFOGain1.connect(windFilter1.frequency);
+
+    const panner1 = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : audioCtx.createPanner();
+    if (panner1.pan) panner1.pan.value = -0.6; // Left
+
+    const windGain1 = audioCtx.createGain();
+    windGain1.gain.value = 0;
+    windGain1.gain.setTargetAtTime(0.2, now, 5.0);
+
+    windSource1.connect(windFilter1);
+    windFilter1.connect(panner1);
+    panner1.connect(windGain1);
+    windGain1.connect(musicGainNode);
+
+    // Wind Layer 2 (Right, faster LFO, slightly quieter)
+    const windSource2 = audioCtx.createBufferSource();
+    windSource2.buffer = noiseBuffer;
+    windSource2.loop = true;
+
+    const windFilter2 = audioCtx.createBiquadFilter();
+    windFilter2.type = 'lowpass';
+    windFilter2.frequency.value = 150;
+    windFilter2.Q.value = 2;
+
+    const windLFO2 = audioCtx.createOscillator();
+    windLFO2.type = 'sine';
+    windLFO2.frequency.value = 0.22; // Out of sync
+
+    const windLFOGain2 = audioCtx.createGain();
+    windLFOGain2.gain.value = 300;
+
+    windLFO2.connect(windLFOGain2);
+    windLFOGain2.connect(windFilter2.frequency);
+
+    const panner2 = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : audioCtx.createPanner();
+    if (panner2.pan) panner2.pan.value = 0.6; // Right
+
+    const windGain2 = audioCtx.createGain();
+    windGain2.gain.value = 0;
+    windGain2.gain.setTargetAtTime(0.15, now, 5.0);
+
+    windSource2.connect(windFilter2);
+    windFilter2.connect(panner2);
+    panner2.connect(windGain2);
+    windGain2.connect(musicGainNode);
+
+    // Start continuous nodes
+    droneLfo.start();
+    droneOsc.start();
+    windSource1.start();
+    windLFO1.start();
+    windSource2.start();
+    windLFO2.start();
+
+    // 3. Random Ambient Event Generator (3 to 15s)
+    function triggerRandomAmbientEvent() {
+        if (state.appState !== 'playing' && state.appState !== 'low_health') return;
+
+        const eventType = Math.random();
+
+        if (eventType < 0.4) {
+            // Distant Howl
+            playDistantHowl();
+        } else {
+            // Dissonant Echoing Piano Note
+            playDissonantPiano();
+        }
+
+        // Schedule next random event
+        const nextDelay = 3000 + Math.random() * 12000;
+        ambientTimerEvent = setTimeout(triggerRandomAmbientEvent, nextDelay);
+    }
+
+    // Kick off first event soon
+    ambientTimerEvent = setTimeout(triggerRandomAmbientEvent, 2000);
+
+    // Expose cleanup
+    currentMusicContext = {
+        stop: () => {
+            droneOsc.stop();
+            droneLfo.stop();
+            windSource1.stop();
+            windLFO1.stop();
+            windSource2.stop();
+            windLFO2.stop();
+            /* the specific ambient event oscillators clean themselves up */
+        }
+    };
+}
+
+function playDistantHowl() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+
+    const howlOsc = audioCtx.createOscillator();
+    const howlGain = audioCtx.createGain();
+    howlOsc.type = 'triangle';
+
+    // Varying low pitches for howl
+    const freqs = [110, 146.8, 164.8, 220]; // A2, D3, E3, A3
+    howlOsc.frequency.value = freqs[Math.floor(Math.random() * freqs.length)];
+
+    // Slow fade in and out to sound distant
+    howlGain.gain.setValueAtTime(0, now);
+    howlGain.gain.linearRampToValueAtTime(0.23, now + 2); // 2 sec fade in (increased vol)
+    howlGain.gain.linearRampToValueAtTime(0, now + 5);    // 3 sec fade out
+
+    // Modulate pitch slightly for eerie wind/beast effect
+    howlOsc.frequency.linearRampToValueAtTime(howlOsc.frequency.value * 0.95, now + 5);
+
+    howlOsc.connect(howlGain);
+    howlGain.connect(musicGainNode);
+
+    howlOsc.start(now);
+    howlOsc.stop(now + 5);
+}
+
+function playDissonantPiano() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+
+    // Pick a low base frequency
+    const baseFreqs = [65.41, 73.42, 82.41, 110]; // C2, D2, E2, A2
+    const baseF = baseFreqs[Math.floor(Math.random() * baseFreqs.length)];
+
+    // Dissonant interval (minor second, flat five, etc.)
+    const dissonances = [1.0594, 1.414]; // x * 2^(1/12) (minor 2nd), x * 2^(6/12) (tritone)
+    const dissF = baseF * dissonances[Math.floor(Math.random() * dissonances.length)];
+
+    // Shared piano envelope
+    const attack = 0.05;
+    const decay = 3.5;
+
+    // Echo/Delay network
+    const delayNode = audioCtx.createDelay();
+    delayNode.delayTime.value = 0.4; // 400ms echo
+
+    const feedbackGain = audioCtx.createGain();
+    feedbackGain.gain.value = 0.5; // Echo fades out slowly
+
+    const delayFilter = audioCtx.createBiquadFilter();
+    delayFilter.type = 'lowpass';
+    delayFilter.frequency.value = 1200; // Muffle echo slightly
+
+    // Connect delay ring
+    delayNode.connect(feedbackGain);
+    feedbackGain.connect(delayFilter);
+    delayFilter.connect(delayNode);
+    delayNode.connect(musicGainNode);
+
+    // Synth 1: Root Tone
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = baseF;
+    gain1.gain.setValueAtTime(0, now);
+    gain1.gain.linearRampToValueAtTime(0.08, now + attack);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + decay);
+
+    // Synth 2: Dissonant Tone
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = 'sawtooth';
+    osc2.frequency.value = dissF;
+    gain2.gain.setValueAtTime(0, now);
+    gain2.gain.linearRampToValueAtTime(0.06, now + attack);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + decay);
+
+    // Route dry signals and to delay
+    osc1.connect(gain1);
+    gain1.connect(musicGainNode);
+    gain1.connect(delayNode);
+
+    osc2.connect(gain2);
+    gain2.connect(musicGainNode);
+    gain2.connect(delayNode);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + decay);
+    osc2.stop(now + decay);
+}
+
+function playSound(type) {
+    if (!audioCtx || !sfxGainNode) return;
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.connect(gain);
+    gain.connect(sfxGainNode);
+
+    const now = audioCtx.currentTime;
+
+    if (type === 'attack') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    } else if (type === 'hit') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    } else if (type === 'death') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.linearRampToValueAtTime(20, now + 0.5);
+
+        // Tremolo
+        const lfo = audioCtx.createOscillator();
+        lfo.frequency.value = 10;
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 0.2;
+        lfo.connect(lfoGain);
+        lfoGain.connect(gain.gain);
+        lfo.start(now);
+        lfo.stop(now + 0.5);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+    } else if (type === 'miss') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.linearRampToValueAtTime(800, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    } else if (type === 'step') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(80, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.1);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+        // Echo for footsteps
+        const delayNode = audioCtx.createDelay();
+        delayNode.delayTime.value = 0.25;
+        const feedbackGain = audioCtx.createGain();
+        feedbackGain.gain.value = 0.3; // quiet echo
+        delayNode.connect(feedbackGain);
+        feedbackGain.connect(delayNode);
+
+        // Connect both the dry signal and the delay signal to output
+        gain.connect(sfxGainNode);
+        delayNode.connect(sfxGainNode);
+        gain.connect(delayNode);
+
+        osc.start(now);
+        osc.stop(now + 0.1);
+    }
+}
+
+function playDeathMusic() {
+    stopMusic();
+    if (!audioCtx) return;
+    currentMusicContext = audioCtx.currentTime;
+
+    // Funereal 8-bit minor dirge (C minor)
+    const notes = [
+        { f: 130.81, d: 1 }, // C3
+        { f: 155.56, d: 1 }, // Eb3
+        { f: 196.00, d: 1 }, // G3
+        { f: 130.81, d: 3 }, // C3
+    ];
+    let time = currentMusicContext;
+    notes.forEach(n => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = n.f;
+        osc.connect(gain);
+        gain.connect(musicGainNode);
+
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.5, time + 0.1);
+        gain.gain.linearRampToValueAtTime(0, time + n.d - 0.1);
+
+        osc.start(time);
+        osc.stop(time + n.d);
+        time += n.d;
+    });
+}
+
+function playTransitionMusic() {
+    stopMusic();
+    if (!audioCtx) return;
+
+    let isPlaying = true;
+    currentMusicContext = { stop: () => { isPlaying = false; } };
+
+    let noteIdx = 0;
+    const tempo = 40; // very slow and creeping
+    const tickTime = 60 / tempo; // quarter notes
+    let nextNoteTime = audioCtx.currentTime + 0.1;
+
+    function schedule() {
+        if (!isPlaying) return;
+        while (nextNoteTime < audioCtx.currentTime + 0.1) {
+            playOrganChord(nextNoteTime);
+            nextNoteTime += tickTime;
+        }
+        requestAnimationFrame(schedule);
+    }
+
+    function playOrganChord(time) {
+        // Creepy diminished descending sequence
+        const seq = [
+            [261.63, 311.13, 369.99], // C dim (C, Eb, Gb)
+            [246.94, 293.66, 349.23], // B dim (B, D, F)
+            [233.08, 277.18, 329.63], // Bb dim (Bb, Db, E)
+            [220.00, 261.63, 311.13]  // A dim (A, C, Eb)
+        ];
+
+        const chord = seq[noteIdx % seq.length];
+        const bass = chord[0] / 2;
+
+        for (let f of [...chord, bass]) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth'; // organ bite
+            osc.frequency.value = f;
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.2, time + 0.1);
+            gain.gain.setValueAtTime(0.2, time + tickTime * 0.8);
+            gain.gain.linearRampToValueAtTime(0, time + tickTime * 0.99);
+
+            osc.connect(gain);
+            gain.connect(musicGainNode);
+
+            osc.start(time);
+            osc.stop(time + tickTime);
+        }
+        noteIdx++;
+    }
+    schedule();
+}
+
+// C64 Colors
+const colors = {
+    black: '#000000',
+    white: '#FFFFFF',
+    red: '#880000',
+    cyan: '#AAFFEE',
+    purple: '#CC44CC',
+    green: '#00CC55',
+    blue: '#0000AA',
+    yellow: '#EEEE77',
+    orange: '#DD8855',
+    brown: '#664400',
+    lightred: '#FF7777',
+    darkgrey: '#333333',
+    grey: '#777777',
+    lightgreen: '#AAFF66',
+    lightblue: '#0088FF',
+    lightgrey: '#BBBBBB'
+};
+
+// Game State
+const GAME_WIDTH = 400;
+const GAME_HEIGHT = 300;
+
+const state = {
+    appState: 'splash', // splash, intro, playing, dead
+    deathTime: 0,
+    turnTick: 0, // Increments every action
+    level: 1, // Start at level 1
+    player: {
+        x: 1, y: 1, dir: 0, // 0: N, 1: E, 2: S, 3: W
+        hp: 20, maxHp: 20,
+        gold: 0,
+        attack: 1
+    },
+    map: [],
+    enemies: [],
+    items: [],
+    inventory: ['Rusty Sword', 'Health Potion'],
+    hands: { left: null, right: null },
+    animations: [], // To store temporary visual effects
+    visibleSecretWalls: [],
+    revealedSecrets: {},
+    quest: {
+        totalEnemies: 0,
+        slainEnemies: 0,
+        completed: false,
+        goldKeyFound: false,
+        goldRoomOpened: false,
+        blackKeyFound: false
+    },
+    settings: {
+        autoPotion: false,
+        generationMode: 'static'
+    },
+    mistParticles: [] // For Level 1 atmosphere
+};
+
+const skeletonImg = new Image();
+let skeletonLoaded = false;
+skeletonImg.onload = () => { skeletonLoaded = true; };
+skeletonImg.src = "c64_skeleton.png";
+
+const wraithImg = new Image();
+let wraithLoaded = false;
+wraithImg.onload = () => { wraithLoaded = true; };
+wraithImg.src = "c64_wraith.png";
+
+// Potion SVG Asset
+const potionSVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g stroke="#FFFFFF" fill="none" stroke-width="4">
+    <!-- Cork -->
+    <path d="M 40 20 L 60 20 L 55 35 L 45 35 Z" fill="#664400" />
+    
+    <!-- Bottle Neck -->
+    <path d="M 45 35 L 55 35 L 55 50 L 45 50 Z" fill="#BBBBBB" />
+    
+    <!-- Bottle Bulb -->
+    <path d="M 45 50 Q 20 60 25 85 L 75 85 Q 80 60 55 50" fill="#FF0000" />
+    
+    <!-- Highlight Reflection -->
+    <path d="M 35 65 Q 30 75 35 80" stroke="#FFFFFF" stroke-linecap="round" />
+  </g>
+</svg>
+`;
+
+const potionImg = new Image();
+let potionLoaded = false;
+potionImg.onload = () => { potionLoaded = true; };
+const encodedPotionSVG = "data:image/svg+xml;base64," + btoa(potionSVG);
+potionImg.src = encodedPotionSVG;
+
+// Chest SVG Asset
+const chestSVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Body of chest -->
+  <rect x="20" y="40" width="60" height="40" fill="#664400" stroke="#FFFFFF" stroke-width="2"/>
+  <!-- Lid of chest -->
+  <path d="M 20 40 Q 50 10 80 40 Z" fill="#664400" stroke="#FFFFFF" stroke-width="2"/>
+  <!-- Iron bands -->
+  <line x1="30" y1="40" x2="30" y2="80" stroke="#BBBBBB" stroke-width="4"/>
+  <line x1="70" y1="40" x2="70" y2="80" stroke="#BBBBBB" stroke-width="4"/>
+  <path d="M 30 40 Q 40 25 50 25 Q 60 25 70 40" stroke="#BBBBBB" fill="none" stroke-width="4"/>
+  <!-- Lock -->
+  <rect x="45" y="35" width="10" height="15" fill="#EEEE77" stroke="#000000" stroke-width="1"/>
+  <rect x="48" y="42" width="4" height="4" fill="#000000"/>
+</svg>
+`;
+const chestImg = new Image();
+let chestLoaded = false;
+chestImg.onload = () => { chestLoaded = true; };
+const encodedChestSVG = "data:image/svg+xml;base64," + btoa(chestSVG);
+chestImg.src = encodedChestSVG;
+
+// Fountain SVG Asset
+const encodedFountainPNG = "data:image/png;base64,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";
+const fountainImg = new Image();
+let fountainLoaded = false;
+fountainImg.onload = () => { fountainLoaded = true; };
+fountainImg.src = encodedFountainPNG;
+
+// Sword SVG Asset
+const encodedSwordPNG = "data:image/png;base64,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tNb+SUZbMm9MFlzuTiUzjdbaP8lorbV2CqO11topjNZaa6cwWmutncJorbV2CqO11topjNZaa6cwWmutncJorbV2CqO11topjNZaa6cwWmutncJorbV2CqO11topjNZaa6cwWmutncJorbV2CqO11topjNZaa6cwWmutncJorbV2CqO11topjNZaa6cwWmutncJorbV2CqO11topjNZaa6cwWmutncJorbV2CqO11topjNZaa6cwWmutncI4mLtPChFBZd93ozDGmBQkUclMozDGmBQkGYXMZMUYY7JAEpWIYIUkoxARk4IkKplpLHD3SSEzjcIYY3IgSVQigjNJMgoRMVkgiReMQkRMCvu+G2/MOJi7TwoRQWXfd6MwxpgUJFHJTKMwxpgUJBmFzGTFGGOyQBKViGCFJKMQEZOCJCqZaSxw90khM43CGGNyIElUIoIzSTIKETFZIIkXjEJETAr7vhtvzDiYu08KEUFl33ejMMaYFCRRyUyjMMaYFCQZhcxkxRhjskASlYhghSSjEBGTgiQqmWkscPdJITONwhhjciBJVCKCM0kyChExWSCJF4xCREwK+74bb8w4mLtPChFBZd93ozDGmBQkUclMozDGmBQkGYXMZMUYY7JAEpWIYIUkoxARk4IkKplpLHD3SSEzjcIYY3IgSVQigjNJMgoRMVkgiReMQkRMCvu+G2/MOJi7TwoRQWXfd6MwxpgUJFHJTKMwxpgUJBmFzGTFGGOyQBKViGCFJKMQEZOCJCqZaSxw90khM43CGGNyIElUIoIzSTIKETFZIIkXjEJETAr7vhtvzDiYu08KEUFl33ejMMaYFCRRyUyjMMaYFCQZhcxkxRhjskASlYhghSSjEBGTgiQqmWkscPdJITONwhhjciBJVCKCM0kyChExWSCJF4xCREwK+74bb8w4mLtPChFBZd93ozDGmBQkUclMozDGmBQkGYXMZMUYY7JAEpWIYIUkoxARk4IkKplpLHD3SSEzjcIYY3IgSVQigjNJMgoRMVkgiReMQkRMCvu+G2/MOJi7TwoRQWXfd6MwxpgUJFHJTKMwxpgUJBmFzGTFGGOyQBKViGCFJKMQEZOCJCqZaSxw90khM43CGGNyIElUIoIzSTIKETFZIIkXjEJETAr7vhtvzDjY4/GYFLZtM2qTQkRQkWTUJoXb7UZl2zYqmWkseDwe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";
+const swordImg = new Image();
+let swordLoaded = false;
+swordImg.onload = () => { swordLoaded = true; };
+swordImg.src = encodedSwordPNG;
+
+const levelNames = [
+    "The Deepest Depths", // 0
+    "The Red Chambers",   // 1
+    "Green Depths",       // 2
+    "Shadow Crypts",      // 3
+    "Obsidian Labyrinth", // 4
+    "The Bone Vaults",    // 5
+    "The Abyss"           // 6+
+];
+
+function getLevelName(lvl) {
+    if (lvl < levelNames.length) return levelNames[lvl];
+    return "The Abyss";
+}
+
+// Key SVG Asset
+const keySVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <g fill="#FFD700" stroke="#B8860B" stroke-width="3">
+            <!-- Bow (Head) -->
+            <path d="M 30 50 A 20 20 0 1 1 70 50 A 20 20 0 1 1 30 50 M 40 50 A 10 10 0 1 0 60 50 A 10 10 0 1 0 40 50" fill-rule="evenodd" />
+            <!-- Collar and Shank (Shaft) -->
+            <rect x="46" y="70" width="8" height="40" rx="2" ry="2" />
+            <rect x="42" y="68" width="16" height="4" />
+            <!-- Bit (Teeth) -->
+            <rect x="54" y="90" width="18" height="8" rx="1" ry="1" />
+            <rect x="54" y="100" width="12" height="8" rx="1" ry="1" />
+        </g>
+    </svg>
+    `;
+const keyImg = new Image();
+let keyLoaded = false;
+keyImg.onload = () => { keyLoaded = true; };
+const encodedKeySVG = "data:image/svg+xml;base64," + btoa(keySVG);
+keyImg.src = encodedKeySVG;
+
+// Black Key Injection Fix
+const encodedBlackKeyPNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABU0lEQVRYCcXB0W3dUAxEwbM1qQX1tCrhsSe2wJqYK8AGDMEJJOZDM+Jl4mXiZeL/NSCGxEzzxTYRwQ/iAfFc2+bbvu9kJt8igkXcJJ5p21zt+05mcooIFnGTeKZtc4oIcWG7I4JF3CSeaducIkJc2O6IYBE3iWfaNqeIEBe2OyJYxE3imbbNKSLEhe2OCBZxk3imbXOKCHFhuyOCRdwknmnb/EtEsIibxHNtm7+JCBZxk5hpFttkJlXFD+IBMde2yUyqikUMiLm2TWZSVSxiQMy1bTKTqmIRA2KubZOZVBWLGBBzbZvMpKpYxICYa9tkJlXFIgbEXNsmM6kqFjEg5to2mUlV8Qtxg5hr22QmVcUiBsRc2yYzqSq2bePz+XAcB1XFIm4Qc22bzKSqWMSAmGvbZCZVxbZtfD4fjuOgqljEDWKubRMRfBED4mXiZeJl4mV/ANLGriFE14P3AAAAAElFTkSuQmCC";
+const blackKeyImg = new Image();
+let blackKeyLoaded = false;
+blackKeyImg.onload = () => { blackKeyLoaded = true; };
+blackKeyImg.src = encodedBlackKeyPNG;
+
+// Spike SVG Assets
+const spikeUpSVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <g stroke="#000000" stroke-width="1">
+            <path d="M 25 80 L 30 0 L 35 80 Z" fill="#BBBBBB" />
+            <path d="M 45 80 L 50 0 L 55 80 Z" fill="#BBBBBB" />
+            <path d="M 65 80 L 70 0 L 75 80 Z" fill="#BBBBBB" />
+            <!-- Base plate -->
+            <rect x="15" y="80" width="70" height="10" fill="#333333" />
+        </g>
+    </svg>
+    `;
+const spikeUpImg = new Image();
+let spikeUpLoaded = false;
+spikeUpImg.onload = () => { spikeUpLoaded = true; };
+spikeUpImg.src = "data:image/svg+xml;base64," + btoa(spikeUpSVG);
+
+const spikeDownSVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <g stroke="#000000" stroke-width="1">
+            <!-- Holes -->
+            <ellipse cx="30" cy="85" rx="8" ry="4" fill="#000000" />
+            <ellipse cx="50" cy="85" rx="8" ry="4" fill="#000000" />
+            <ellipse cx="70" cy="85" rx="8" ry="4" fill="#000000" />
+            <!-- Base plate -->
+            <rect x="15" y="80" width="70" height="10" fill="#333333" />
+        </g>
+    </svg>
+    `;
+const spikeDownImg = new Image();
+let spikeDownLoaded = false;
+spikeDownImg.onload = () => { spikeDownLoaded = true; };
+spikeDownImg.src = "data:image/svg+xml;base64," + btoa(spikeDownSVG);
+
+// Directions: N, E, S, W
+const DIRS = [
+    { dx: 0, dy: -1 }, // 0 N
+    { dx: 1, dy: 0 },  // 1 E
+    { dx: 0, dy: 1 },  // 2 S
+    { dx: -1, dy: 0 }  // 3 W
+];
+
+function generateMap(W, H) {
+    let map = Array(H).fill(0).map(() => Array(W).fill(1));
+
+    // Simple random walk for cavern/corridor mix
+    let cx = Math.floor(W / 2);
+    let cy = Math.floor(H / 2);
+    map[cy][cx] = 0;
+
+    let pathLen = W * H * 0.3; // 30% cleared - tighter maze
+    let dir = 0;
+
+    for (let i = 0; i < pathLen; i++) {
+        // Change dir sometimes
+        if (Math.random() < 0.4) { // More turns
+            dir = Math.floor(Math.random() * 4);
+        }
+
+        let d = DIRS[dir];
+        let nx = cx + d.dx;
+        let ny = cy + d.dy;
+
+        // Bounds check with 1-tile border
+        if (nx > 0 && nx < W - 1 && ny > 0 && ny < H - 1) {
+            cx = nx;
+            cy = ny;
+
+            // Randomly carve small cavern (less frequent)
+            if (Math.random() < 0.05) {
+                for (let yy = -1; yy <= 1; yy++) {
+                    for (let xx = -1; xx <= 1; xx++) {
+                        if (cx + xx > 0 && cx + xx < W - 1 && cy + yy > 0 && cy + yy < H - 1) {
+                            map[cy + yy][cx + xx] = 0;
+                        }
+                    }
+                }
+            } else {
+                map[cy][cx] = 0;
+            }
+        } else {
+            // Pick new direction if hit wall
+            dir = Math.floor(Math.random() * 4);
+        }
+    }
+
+    // Find safe start point
+    let startFound = false;
+    for (let y = 1; y < H - 1 && !startFound; y++) {
+        for (let x = 1; x < H - 1 && !startFound; x++) {
+            if (map[y][x] === 0) {
+                state.player.x = x;
+                state.player.y = y;
+                startFound = true;
+            }
+        }
+    }
+
+    // Place exit door (2) far from start
+    let exitPlaced = false;
+    for (let y = H - 2; y > 0 && !exitPlaced; y--) {
+        for (let x = W - 2; x > 0 && !exitPlaced; x--) {
+            if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
+                map[y][x] = 2; // Door wall
+                exitPlaced = true;
+            }
+        }
+    }
+
+    // Spawn exactly 5 skeletons, one of each level (1-5)
+    state.enemies = [];
+    state.items = [];
+    let spawned = 0;
+
+    const getOpenness = (cx, cy) => {
+        let emptyCount = 0;
+        for (let yy = -1; yy <= 1; yy++) {
+            for (let xx = -1; xx <= 1; xx++) {
+                if (map[cy + yy] && map[cy + yy][cx + xx] === 0) emptyCount++;
+            }
+        }
+        return emptyCount;
+    };
+
+    const trySpawnEnemy = (type, lvl) => {
+        for (let attempts = 0; attempts < 100; attempts++) {
+            let x = Math.floor(Math.random() * (W - 2)) + 1;
+            let y = Math.floor(Math.random() * (H - 2)) + 1;
+            if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
+                if (!state.enemies.find(e => e.x === x && e.y === y)) {
+
+                    const openness = getOpenness(x, y);
+                    const isRoom = openness >= 6;
+                    const isCorridor = openness <= 5;
+
+                    let validPlacement = false;
+                    // Lower levels (1-2) prefer corridors, higher levels (3-5) prefer rooms
+                    if (lvl <= 2 && isCorridor) validPlacement = true;
+                    if (lvl >= 3 && isRoom) validPlacement = true;
+
+                    // Fallback to any valid floor if we get stuck trying to find a perfect spot
+                    if (attempts > 50) validPlacement = true;
+
+                    if (validPlacement) {
+                        const hp = 10 + (lvl * 4);
+                        state.enemies.push({ x, y, hp: hp, maxHp: hp, type: type, level: lvl, state: 'idle' });
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
+    const requiredLevels = [1, 2, 3, 4, 5];
+    for (let i = 0; i < 5; i++) {
+        const lvl = requiredLevels[i];
+        if (trySpawnEnemy('Skeleton', lvl)) {
+            spawned++;
+            const e = state.enemies[state.enemies.length - 1];
+            // Pre-spawn loot under high-level enemies
+            if (lvl === 5) {
+                state.items.push({ x: e.x, y: e.y, type: 'key', name: 'Gold Key' });
+            } else if (lvl >= 3 && Math.random() < 0.5) {
+                state.items.push({ x: e.x, y: e.y, type: 'chest', name: 'Chest' });
+            }
+        }
+    }
+
+    // Spawn 1 Save Fountain on Level 2 and above
+    if (state.level >= 2) {
+        let fountainPlaced = false;
+        while (!fountainPlaced) {
+            let x = Math.floor(Math.random() * (W - 2)) + 1;
+            let y = Math.floor(Math.random() * (H - 2)) + 1;
+            // Place fountain on an empty floor away from player
+            if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
+                state.items.push({ x, y, type: 'fountain', name: 'Save Fountain', persistent: true });
+                fountainPlaced = true;
+            }
+        }
+    }
+
+    // Level 2 special spawns: Wraiths and Slightly Less Rusty Sword
+    if (state.level === 2) {
+        // Spawn 3 additional Wraiths
+        let wraithsSpawned = 0;
+        for (let attemptsWrap = 0; attemptsWrap < 20 && wraithsSpawned < 3; attemptsWrap++) {
+            const lvl = Math.floor(Math.random() * 3) + 1; // Level 1-3 Wraith
+            if (trySpawnEnemy('Wraith', lvl)) {
+                wraithsSpawned++;
+                spawned++;
+            }
+        }
+    } else if (state.level > 2) {
+        // Higher levels spawn more Wraiths
+        let extraWraiths = state.level + 2;
+        let wraithsSpawned = 0;
+        for (let attemptsWrap = 0; attemptsWrap < 50 && wraithsSpawned < extraWraiths; attemptsWrap++) {
+            const lvl = Math.min(5, Math.floor(Math.random() * state.level) + 1);
+            if (trySpawnEnemy('Wraith', lvl)) {
+                wraithsSpawned++;
+                spawned++;
+            }
+        }
+    }
+
+    // Quest Tracker Init
+    state.quest.totalEnemies = spawned;
+    state.quest.slainEnemies = 0;
+    state.quest.completed = false;
+    state.quest.secretsFound = 0;
+    state.quest.totalSecrets = 0;
+
+    // Carve exactly 2 small locked rooms behind doors
+    const numLockedRooms = 2;
+    let roomsCarved = 0;
+
+    // Find all valid anchor points for a vault
+    // An anchor is a wall tile (1) with exactly one adjacent floor (0) 
+    // and a solid 5x5 block of walls (1) behind it to carve into.
+    let validAnchors = [];
+
+    for (let y = 2; y < H - 2; y++) {
+        for (let x = 2; x < W - 2; x++) {
+            if (map[y][x] === 1) { // Potential door
+                let floorCount = 0;
+                let cdx = 0, cdy = 0; // Dig direction
+
+                if (map[y - 1][x] === 0) { floorCount++; cdy = 1; }
+                if (map[y + 1][x] === 0) { floorCount++; cdy = -1; }
+                if (map[y][x - 1] === 0) { floorCount++; cdx = 1; }
+                if (map[y][x + 1] === 0) { floorCount++; cdx = -1; }
+
+                if (floorCount === 1) {
+                    // Check if there is enough solid rock behind it to carve a 3x3 room
+                    // The room will be from (x+cdx*1, y+cdy*1) to (x+cdx*3, y+cdy*3) width-wise spread
+                    let validRock = true;
+
+                    let startX = x + cdx;
+                    let startY = y + cdy;
+
+                    // We check a 5x5 area around the target room center to ensure a 1-tile wall buffer exists around the room
+                    let centerRoomX = x + cdx * 2;
+                    let centerRoomY = y + cdy * 2;
+
+                    for (let ry = centerRoomY - 2; ry <= centerRoomY + 2; ry++) {
+                        for (let rx = centerRoomX - 2; rx <= centerRoomX + 2; rx++) {
+                            // If out of bounds or not a wall (and not the door itself)
+                            if (rx < 1 || rx >= W - 1 || ry < 1 || ry >= H - 1) {
+                                validRock = false;
+                                break;
+                            }
+                            if (map[ry][rx] !== 1 && !(rx === x && ry === y)) {
+                                validRock = false;
+                                break;
+                            }
+                        }
+                        if (!validRock) break;
+                    }
+
+                    if (validRock) {
+                        validAnchors.push({ x, y, cdx, cdy, centerRoomX, centerRoomY });
+                    }
+                }
+            }
+        }
+    }
+
+    // Shuffle anchors to randomize room placement
+    validAnchors.sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < validAnchors.length && roomsCarved < numLockedRooms; i++) {
+        let a = validAnchors[i];
+
+        // Final sanity check, ensure the anchor hasn't been overwritten by another room
+        if (map[a.y][a.x] !== 1) continue;
+
+        // Place Door
+        map[a.y][a.x] = 4;
+
+        // Carve 3x3 Room
+        for (let ry = a.centerRoomY - 1; ry <= a.centerRoomY + 1; ry++) {
+            for (let rx = a.centerRoomX - 1; rx <= a.centerRoomX + 1; rx++) {
+                map[ry][rx] = 0;
+            }
+        }
+
+        // Place items
+        if (roomsCarved === 0) {
+            // First room ALWAYS gets the Black Key dead center
+            state.items.push({ x: a.centerRoomX, y: a.centerRoomY, type: 'Black Key', name: 'Black Key' });
+        } else {
+            // Additional rooms get treasure
+            if (state.level === 1) {
+                state.items.push({ x: a.centerRoomX, y: a.centerRoomY, type: 'weapon', name: 'Rusty Sword' });
+            } else if (state.level === 2) {
+                state.items.push({ x: a.centerRoomX, y: a.centerRoomY, type: 'weapon', name: 'Slightly Less Rusty Sword' });
+            } else {
+                if (Math.random() < 0.5) {
+                    state.items.push({ x: a.centerRoomX, y: a.centerRoomY, type: 'chest', name: 'Chest' });
+                } else {
+                    state.items.push({ x: a.centerRoomX, y: a.centerRoomY, type: 'Health Potion', name: 'Health Potion' });
+                }
+            }
+        }
+        roomsCarved++;
+    }
+
+    // Extreme fallback if absolutely 0 anchors existed (e.g. perfectly filled map)
+    if (roomsCarved === 0) {
+        // Just crush whatever is at top-left and force it
+        map[2][3] = 4; // Door
+        map[2][4] = 0; map[2][5] = 0; map[2][6] = 0; // 3x3 vault
+        map[3][4] = 0; map[3][5] = 0; map[3][6] = 0;
+        map[4][4] = 0; map[4][5] = 0; map[4][6] = 0;
+
+        // Surround with walls just in case
+        for (let yy = 1; yy <= 5; yy++) {
+            for (let xx = 3; xx <= 7; xx++) {
+                if (map[yy][xx] !== 0 && map[yy][xx] !== 4) map[yy][xx] = 1;
+            }
+        }
+        // Force path to door
+        map[2][2] = 0;
+        map[2][1] = 0;
+
+        state.items.push({ x: 5, y: 3, type: 'Black Key', name: 'Black Key' });
+    }
+
+    // Connect separate areas using random corridors
+    const numPotions = Math.floor(Math.random() * 2) + 1;
+    let potionsSpawned = 0;
+    while (potionsSpawned < numPotions) {
+        let x = Math.floor(Math.random() * (W - 2)) + 1;
+        let y = Math.floor(Math.random() * (H - 2)) + 1;
+        if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
+            // Don't spawn perfectly on top of another item
+            if (!state.items.find(i => i.x === x && i.y === y)) {
+                state.items.push({ x, y, type: 'Health Potion', name: 'Health Potion' });
+                potionsSpawned++;
+            }
+        }
+    }
+
+    // Spawn 0-4 Chests at dead ends
+    const numChests = Math.floor(Math.random() * 5);
+    let deadEnds = [];
+    for (let y = 1; y < H - 1; y++) {
+        for (let x = 1; x < W - 1; x++) {
+            if (map[y][x] === 0) {
+                let walls = 0;
+                if (map[y - 1][x] === 1) walls++;
+                if (map[y + 1][x] === 1) walls++;
+                if (map[y][x - 1] === 1) walls++;
+                if (map[y][x + 1] === 1) walls++;
+                if (walls >= 3 && (x !== state.player.x || y !== state.player.y)) {
+                    deadEnds.push({ x, y });
+                }
+            }
+        }
+    }
+    // Shuffle dead ends
+    deadEnds.sort(() => Math.random() - 0.5);
+
+    let chestsSpawned = 0;
+    while (chestsSpawned < numChests && deadEnds.length > 0) {
+        let spot = deadEnds.pop();
+        if (!state.items.find(i => i.x === spot.x && i.y === spot.y)) {
+            state.items.push({ x: spot.x, y: spot.y, type: 'chest', name: 'Chest' });
+            chestsSpawned++;
+        }
+    }
+
+    // Spawn 1-5 Spike Traps (50% reduced)
+    const numSpikes = Math.floor(Math.random() * 5) + 1;
+    let spikesSpawned = 0;
+    let attempts = 0; // Prevent infinite loops
+    while (spikesSpawned < numSpikes && attempts < 100) {
+        attempts++;
+        let x = Math.floor(Math.random() * (W - 2)) + 1;
+        let y = Math.floor(Math.random() * (H - 2)) + 1;
+        // 3 represents Spike Trap on floor
+        if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
+            map[y][x] = 3;
+            spikesSpawned++;
+        }
+    }
+
+    // Turn roughly 1.5% of inner walls into Secret Walls, ensuring they are not side-by-side
+    let wallCoords = [];
+    for (let y = 1; y < H - 1; y++) {
+        for (let x = 1; x < W - 1; x++) {
+            if (map[y][x] === 1) {
+                wallCoords.push({ x, y });
+            }
+        }
+    }
+
+    let targetSecrets = Math.floor(wallCoords.length * 0.04); // Multiplier reduced to halve the appearance rate
+    // Shuffle the wallCoords to pick randomly
+    for (let i = wallCoords.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [wallCoords[i], wallCoords[j]] = [wallCoords[j], wallCoords[i]];
+    }
+
+    let placedSecrets = 0;
+    for (let i = 0; i < wallCoords.length && placedSecrets < targetSecrets; i++) {
+        let { x, y } = wallCoords[i];
+
+        // Check if any adjacent tile is already a secret wall (5)
+        let hasAdjacentSecret = false;
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                if (map[y + dy][x + dx] === 5) {
+                    hasAdjacentSecret = true;
+                }
+            }
+        }
+
+        if (!hasAdjacentSecret) {
+            map[y][x] = 5;
+            placedSecrets++;
+        }
+    }
+    state.quest.totalSecrets = placedSecrets;
+
+    state.turnTick = 0;
+
+    // Initialize Explored Array for Fog of War
+    state.explored = Array(H).fill(0).map(() => Array(W).fill(false));
+    if (typeof revealFog === 'function') revealFog(); // Reveal starting area
+
+    // Initialize Mist
+    state.mistParticles = [];
+    if (state.level === 1 || state.level === 2) {
+        for (let i = 0; i < 40; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT / 2 - 20 + Math.random() * (GAME_HEIGHT / 2 + 20), // Mostly cover lower half and horizon
+                speed: 0.2 + Math.random() * 0.8,
+                size: 8 + Math.random() * 24,
+                opacity: 0.05 + Math.random() * 0.15
+            });
+        }
+    }
+
+    return map;
+}
+
+function calcPlayerAttack() {
+    let atk = 1; // base Unarmed
+    if (state.hands.left === 'Slightly Less Rusty Sword' || state.hands.right === 'Slightly Less Rusty Sword') {
+        atk = 4;
+    } else if (state.hands.left === 'Rusty Sword' || state.hands.right === 'Rusty Sword') {
+        atk = 3; // Example weapon power
+    }
+    state.player.attack = atk;
+
+    const atkText = document.getElementById('attack-val-text');
+    if (atkText) atkText.innerText = state.player.attack;
+}
+
+function updateUIState() {
+    calcPlayerAttack();
+
+    const titleDisplay = document.getElementById('level-title-display');
+    if (titleDisplay) {
+        titleDisplay.innerText = `LEVEL ${state.level}: ${getLevelName(state.level)} `;
+    }
+
+    if (state.player.hp > state.player.maxHp * 0.15) {
+        state.lowHealthWarned = false;
+    }
+
+    // Health
+    const hpText = document.getElementById('hp-text');
+    const hpFill = document.getElementById('health-bar-fill');
+    if (hpText) hpText.innerText = `${state.player.hp}/${state.player.maxHp}`;
+    if (hpFill) hpFill.style.width = `${(state.player.hp / state.player.maxHp) * 100}%`;
+
+    // Gold
+    const goldText = document.getElementById('gold-text');
+    if (goldText) goldText.innerText = state.player.gold;
+
+    // Quest
+    const qText = document.getElementById('quest-text');
+    if (qText) {
+        let details = `
+            <span style='color:var(--c-green)'>1. Kill 'em all-</span> <span style='color:var(--c-white)'>(Slay all monsters for a prize. Total: ${state.quest.slainEnemies}/${state.quest.totalEnemies})</span><br><br>
+            <span style='color:var(--c-green)'>2. Find the Gold Key-</span> <span style='color:var(--c-white)'>(This will open the door to the mystery room).</span><br><br>
+            <span style='color:var(--c-green)'>3. Find the black key-</span> <span style='color:var(--c-white)'>(This will unlock the exit).</span><br><br>
+            <span style='color:var(--c-green)'>4. Find all the secret walls-</span> <span style='color:var(--c-white)'>(Found: ${state.quest.secretsFound}/${state.quest.totalSecrets}).</span><br><br>
+            <span style='color:var(--c-green)'>5. Find ${getLevelName(state.level + 1)}.</span>
+        `;
+        qText.innerHTML = details;
+    }
+    const questProg = document.getElementById('quest-progress');
+    if (questProg) {
+        questProg.innerHTML = ""; // Clear old text as it's now in details
+    }
+
+    const autoPotionCb = document.getElementById('auto-potion-cb');
+    if (autoPotionCb) autoPotionCb.checked = state.settings.autoPotion;
+
+    // Inventory
+    const invList = document.getElementById('inventory-list');
+    if (invList) {
+        let itemCounts = {};
+        let uniqueItems = [];
+        state.inventory.forEach(item => {
+            if (!itemCounts[item]) {
+                itemCounts[item] = 0;
+                uniqueItems.push(item);
+            }
+            itemCounts[item]++;
+        });
+
+        invList.innerHTML = uniqueItems.map(item => {
+            let displayItem = itemCounts[item] > 1 ? `${item} (${itemCounts[item]})` : item;
+            let idx = state.inventory.indexOf(item);
+            return `<li><a href="#" onclick="equipItem(${idx}); return false;" style="color:var(--c-white);text-decoration:none;">${displayItem}</a></li>`;
+        }).join('');
+    }
+
+    // Hands
+    const leftEl = document.querySelector('#left-hand .item');
+    const rightEl = document.querySelector('#right-hand .item');
+    if (leftEl) leftEl.innerText = state.hands.left || 'EMPTY';
+    if (rightEl) rightEl.innerText = state.hands.right || 'EMPTY';
+}
+
+window.equipItem = function (idx) {
+    if (state.appState === 'low_health') {
+        state.appState = 'playing';
+    }
+
+    const item = state.inventory[idx];
+
+    if (item === 'Health Potion') {
+        state.inventory.splice(idx, 1);
+        state.player.hp = Math.min(state.player.maxHp, state.player.hp + Math.floor(state.player.maxHp / 2));
+        showMessage("HEALED");
+        updateUIState();
+        render();
+        return; // Always return so it doesn't get equipped to hands
+    }
+
+    if (item === 'Super Potion') {
+        state.inventory.splice(idx, 1);
+        state.player.hp = state.player.maxHp;
+        showMessage("100% HEALED!");
+        updateUIState();
+        render();
+        return; // Always return so it doesn't get equipped to hands
+    }
+
+    if (item === 'Slightly Less Rusty Sword') {
+        let hasRusty = false;
+        if (state.hands.right === 'Rusty Sword') {
+            state.hands.left = 'Rusty Sword';
+            state.hands.right = item;
+            hasRusty = true;
+        } else if (state.hands.left === 'Rusty Sword') {
+            state.hands.right = 'Rusty Sword';
+            state.hands.left = item;
+            hasRusty = true;
+        }
+
+        if (hasRusty) {
+            state.inventory.splice(idx, 1);
+            updateUIState();
+            return;
+        }
+    }
+
+    if (!state.hands.right) {
+        state.hands.right = item;
+        state.inventory.splice(idx, 1);
+    } else if (!state.hands.left) {
+        state.hands.left = item;
+        state.inventory.splice(idx, 1);
+    } else {
+        // Swap with right hand
+        const old = state.hands.right;
+        state.hands.right = item;
+        state.inventory[idx] = old;
+    }
+    updateUIState();
+};
+
+function showMessage(msg, options = {}) {
+    state.animations.push({
+        type: 'text',
+        text: msg,
+        timer: 180,
+        color: options.color || colors.yellow,
+        flash: options.flash || false
+    }); // 3 seconds at 60fps
+}
+
+function takeDamage(amount) {
+    state.player.hp -= amount;
+    playSound('hit');
+
+    // UI Flash
+    const crt = document.getElementById('crt-container');
+    crt.classList.remove('flash-red');
+    void crt.offsetWidth; // trigger reflow
+    crt.classList.add('flash-red');
+
+    // Auto-Potion Logic (Intercepts Death)
+    if (state.player.hp <= (state.player.maxHp * 0.2) && state.settings.autoPotion) {
+        const potIdx = state.inventory.indexOf('Health Potion');
+        if (potIdx !== -1) {
+            state.inventory.splice(potIdx, 1);
+            let hpToAdd = Math.floor(state.player.maxHp / 2);
+
+            if (state.player.hp <= 0) {
+                state.player.hp = hpToAdd;
+                showMessage("DEATH AVERTED! POTION USED!", { color: colors.green });
+            } else {
+                state.player.hp = Math.min(state.player.maxHp, state.player.hp + hpToAdd);
+                showMessage("AUTO-POTION USED!", { color: colors.green });
+            }
+        }
+    }
+
+    if (state.player.hp <= 0) {
+        state.player.hp = 0;
+        if (state.appState !== 'dead') {
+            state.appState = 'dead';
+            state.deathTime = Date.now();
+            const deathScreen = document.getElementById('death-screen');
+            if (deathScreen) deathScreen.classList.remove('hidden');
+            playDeathMusic();
+        }
+    } else if (state.player.hp <= (state.player.maxHp * 0.15) && !state.lowHealthWarned) {
+        state.appState = 'low_health';
+        state.lowHealthWarned = true;
+    }
+    updateUIState();
+}
+
+function advanceTurn() {
+    state.turnTick++;
+
+    // Check Spike Traps
+    const cell = getCell(state.player.x, state.player.y);
+    if (cell === 3) {
+        // Since turnTick just incremented, if it's currently EVEN, spikes are UP, dealing damage.
+        // That means the player stepping on odd turns (making it even when they arrive) gets hurt.
+        // The user requested: "They move up or down every turn. So they have to be up, for the player not to be hurt the next turn as they step onto it."
+        // This confirms that stepping on DOWN spikes triggers UP and damage, stepping on UP spikes triggers DOWN and safety.
+        if (state.turnTick % 2 === 0) {
+            showMessage("SPIKED!");
+            takeDamage(5); // 5 damage from spikes
+        }
+    }
+}
+
+function attackFront() {
+    if (!audioCtx) initAudio(); // Initialize audio on first interaction
+
+    const d = DIRS[state.player.dir];
+    const tx = state.player.x + d.dx;
+    const ty = state.player.y + d.dy;
+
+    let hit = false;
+    for (let i = 0; i < state.enemies.length; i++) {
+        const e = state.enemies[i];
+        if (e.x === tx && e.y === ty && e.state !== 'dead') {
+
+            // First time attacking this enemy? Suggest difficulty
+            if (e.hp === e.maxHp) {
+                const dangerDiff = e.level - state.player.attack;
+                let diffMsg = 'EASY';
+                let diffColor = colors.white;
+
+                if (dangerDiff === 0 || dangerDiff === 1) {
+                    diffMsg = 'MODERATE DIFFICULTY';
+                    diffColor = colors.lightblue;
+                } else if (dangerDiff === 2) {
+                    diffMsg = 'HARD';
+                    diffColor = colors.lightred;
+                } else if (dangerDiff >= 3) {
+                    diffMsg = 'VERY HARD';
+                    diffColor = colors.purple;
+                }
+
+                showMessage(diffMsg, { color: diffColor, flash: true });
+            }
+
+            // 20% Miss chance for player
+            if (Math.random() < 0.2) {
+                showMessage("MISS");
+                playSound('miss');
+            } else {
+                playSound('attack');
+                state.animations.push({ type: 'swipe', timer: 10, color: colors.white });
+
+                // Check for dual wielding
+                let isDualWielding = (state.hands.left === 'Rusty Sword' && state.hands.right === 'Slightly Less Rusty Sword') ||
+                    (state.hands.right === 'Rusty Sword' && state.hands.left === 'Slightly Less Rusty Sword');
+
+                if (isDualWielding) {
+                    state.animations.push({ type: 'swipe', timer: 15, color: colors.cyan });
+                }
+
+                // Base player dmg scales with attack stat (Unarmed=1->2dmg, Rusty=3->6dmg, SLRusty=4->8dmg)
+                let playerDmg = state.player.attack * 2;
+                let offHandDmg = isDualWielding ? 3 : 0; // Offhand Rusty Sword adds 3 damage (0.5x 6)
+
+                let totalDmg = playerDmg + offHandDmg;
+
+                // Higher level skeletons reduce damage taken
+                let dmgReduction = Math.max(0, e.level - 1);
+                let finalDmg = Math.max(1, totalDmg - dmgReduction);
+
+                // User requested level 4 and 5 skeletons to take ~15% more damage
+                if (e.level >= 4) {
+                    finalDmg = Math.ceil(finalDmg * 1.15);
+                }
+
+                e.hp -= finalDmg;
+
+                if (e.hp <= 0) {
+                    // Enemy died - calculate loot
+                    e.state = 'dead';
+                    e.deathTimer = 15; // Animation frames
+                    playSound('death');
+
+                    // Drop Gold on floor
+                    const droppedGold = Math.floor(Math.random() * 15) + 1;
+                    state.items.push({ x: e.x, y: e.y, type: 'gold', amount: droppedGold });
+
+                    // Level 3 and 4 Skeletons always drop a Potion
+                    if (e.level === 3 || e.level === 4) {
+                        state.items.push({ x: e.x, y: e.y, type: 'Health Potion', name: 'Health Potion' });
+                    }
+
+                    // Quest Tracking
+                    state.quest.slainEnemies++;
+                    if (!state.quest.completed && state.quest.slainEnemies >= state.quest.totalEnemies) {
+                        state.quest.completed = true;
+                        state.player.gold += 50;
+                        state.inventory.push('Super Potion');
+                        setTimeout(() => showMessage("QUEST COMPLETE! +50G +SUPER POTION"), 1000);
+                    }
+
+                    updateUIState();
+                }
+                hit = true;
+            }
+
+            // Enemy attacks back if still alive
+            if (e.hp > 0) {
+                setTimeout(() => {
+                    if (Math.random() < 0.2) {
+                        showMessage("ENEMY MISS");
+                        playSound('miss');
+                    } else {
+                        // Enemy deals more dmg at higher levels
+                        const baseDmg = state.player.attack === 2 ? 3 : 2;
+                        const levelBonus = e.level - 1;
+                        let finalEnemyDmg = Math.max(1, Math.floor(Math.random() * (baseDmg + levelBonus)) + 1);
+                        takeDamage(finalEnemyDmg);
+                        render();
+                    }
+                }, 300);
+            }
+            break;
+        }
+    }
+
+    if (!hit) {
+        // Just swipe air
+        playSound('attack');
+        state.animations.push({ type: 'swipe', timer: 10 });
+    }
+    render();
+}
+
+function wait() {
+    if (!audioCtx) initAudio(); // Initialize audio on first interaction
+    advanceTurn();
+    render();
+}
+
+state.map = generateMap(21, 21); // Smaller map
+
+// Pseudo-3D Rendering Constants
+// Based on traditional grid crawler viewport (e.g. Bard's Tale / Wizardry)
+
+function init() {
+    bindControls();
+    updateUIState();
+
+    // Bind Splash Screen Buttons
+    const btnStart = document.getElementById('btn-start');
+    const btnLoad = document.getElementById('btn-load');
+    const splashScreen = document.getElementById('splash-screen');
+    const introScreen = document.getElementById('intro-screen');
+    const infoOverlay = document.getElementById('info-overlay');
+    const btnInfo = document.getElementById('btn-info');
+    const btnCloseInfo = document.getElementById('btn-close-info');
+
+    const btnMenu = document.getElementById('btn-menu');
+    if (btnMenu) {
+        btnMenu.addEventListener('click', () => {
+            state.appState = 'menu';
+            splashScreen.style.display = 'flex';
+            document.getElementById('btn-resume').classList.remove('hidden');
+            playSplashMusic();
+        });
+    }
+
+    const btnResume = document.getElementById('btn-resume');
+    if (btnResume) {
+        btnResume.addEventListener('click', () => {
+            splashScreen.style.display = 'none';
+            state.appState = 'playing';
+            playGameMusic();
+        });
+    }
+
+    const btnSound = document.getElementById('btn-sound');
+    const soundOverlay = document.getElementById('sound-overlay');
+    const btnCloseSound = document.getElementById('btn-close-sound');
+
+    if (btnSound) {
+        btnSound.addEventListener('click', () => {
+            soundOverlay.classList.remove('hidden');
+            initAudio(); // Initialize just in case so we can set volumes
+        });
+    }
+
+    if (btnCloseSound) {
+        btnCloseSound.addEventListener('click', () => {
+            soundOverlay.classList.add('hidden');
+        });
+    }
+
+    const btnSettings = document.getElementById('btn-settings');
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const btnCloseSettings = document.getElementById('btn-close-settings');
+    const genModeSelect = document.getElementById('gen-mode-select');
+    const screenSizeSelect = document.getElementById('screen-size-select');
+
+    if (btnSettings) {
+        btnSettings.addEventListener('click', () => {
+            settingsOverlay.classList.remove('hidden');
+        });
+    }
+
+    if (btnCloseSettings) {
+        btnCloseSettings.addEventListener('click', () => {
+            settingsOverlay.classList.add('hidden');
+        });
+    }
+
+    if (genModeSelect) {
+        // default static
+        state.settings.generationMode = 'static';
+        genModeSelect.value = state.settings.generationMode;
+        genModeSelect.addEventListener('change', (e) => {
+            state.settings.generationMode = e.target.value;
+        });
+    }
+
+    if (screenSizeSelect) {
+        const appContainer = document.querySelector('.app-container');
+        screenSizeSelect.addEventListener('change', (e) => {
+            if (appContainer) {
+                appContainer.classList.remove('scale-1x', 'scale-2x', 'scale-3x');
+                appContainer.classList.add(`scale-${e.target.value}`);
+            }
+        });
+    }
+
+    const volMusic = document.getElementById('vol-music');
+    if (volMusic) {
+        volMusic.addEventListener('input', (e) => {
+            if (musicGainNode) musicGainNode.gain.value = parseFloat(e.target.value);
+        });
+    }
+
+    const volSfx = document.getElementById('vol-sfx');
+    if (volSfx) {
+        volSfx.addEventListener('input', (e) => {
+            if (sfxGainNode) sfxGainNode.gain.value = parseFloat(e.target.value);
+        });
+    }
+
+    if (btnStart) {
+        btnStart.addEventListener('click', () => {
+            splashScreen.style.display = 'none';
+            state.appState = 'intro';
+            introScreen.classList.remove('hidden');
+            initAudio();
+            playIntroMusic();
+        });
+    }
+
+    if (btnLoad) {
+        btnLoad.addEventListener('click', () => {
+            const savedStateStr = localStorage.getItem('c64_dungeon_save');
+            if (savedStateStr) {
+                try {
+                    const savedState = JSON.parse(savedStateStr);
+                    // Overwrite global state
+                    Object.assign(state, savedState);
+
+                    splashScreen.style.display = 'none';
+                    state.appState = 'playing';
+                    initAudio(); // Initialize just in case so we can set volumes
+                    playGameMusic();
+                    render(); // Draw first frame immediately
+                    updateUIState();
+                    showMessage("GAME LOADED.");
+                } catch (e) {
+                    console.error("Failed to parse save", e);
+                }
+            } else {
+                alert("No save found!");
+            }
+        });
+    }
+
+    const startupOverlay = document.getElementById('startup-overlay');
+    if (startupOverlay) {
+        startupOverlay.addEventListener('click', () => {
+            startupOverlay.style.display = 'none';
+            if (!audioCtx) {
+                initAudio();
+                playSplashMusic();
+            }
+        });
+    }
+
+    if (introScreen) {
+        introScreen.addEventListener('click', () => {
+            if (state.appState === 'intro') {
+                introScreen.classList.add('hidden');
+                state.appState = 'playing';
+                playGameMusic();
+                render(); // Draw first frame immediately
+            }
+        });
+    }
+
+    const autoPotionCb = document.getElementById('auto-potion-cb');
+    if (autoPotionCb) {
+        autoPotionCb.addEventListener('change', (e) => {
+            state.settings.autoPotion = e.target.checked;
+        });
+    }
+
+    if (btnInfo) {
+        btnInfo.addEventListener('click', () => {
+            infoOverlay.style.display = 'block';
+        });
+    }
+
+    if (btnCloseInfo) {
+        btnCloseInfo.addEventListener('click', () => {
+            infoOverlay.style.display = 'none';
+        });
+    }
+
+    const gameCanvas = document.getElementById('game-canvas');
+    if (gameCanvas) {
+        gameCanvas.addEventListener('click', () => {
+            if (state.appState === 'low_health') state.appState = 'playing';
+            if (state.appState === 'playing') {
+                attackFront();
+            }
+        });
+    }
+
+    const attackBtn = document.getElementById('attack-btn');
+    if (attackBtn) {
+        attackBtn.addEventListener('click', () => {
+            if (state.appState === 'low_health') state.appState = 'playing';
+            if (state.appState === 'playing') attackFront();
+        });
+    }
+
+    const waitBtn = document.getElementById('wait-btn');
+    if (waitBtn) {
+        waitBtn.addEventListener('click', () => {
+            if (state.appState === 'low_health') state.appState = 'playing';
+            if (state.appState === 'playing') wait();
+        });
+    }
+
+    const deathScreen = document.getElementById('death-screen');
+    if (deathScreen) {
+        deathScreen.addEventListener('click', () => {
+            if (state.appState === 'dead' && Date.now() - state.deathTime > 3000) {
+                location.reload();
+            }
+        });
+    }
+
+    const transitionScreen = document.getElementById('transition-screen');
+    if (transitionScreen) {
+        transitionScreen.addEventListener('click', () => {
+            if (state.appState === 'transition' && state.transitionReady) {
+                nextLevel();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (state.appState === 'dead' && e.code === 'Space') {
+            if (Date.now() - state.deathTime > 3000) {
+                location.reload();
+            }
+        }
+    });
+
+    render();
+    gameLoop();
+}
+
+function gameLoop() {
+    let needsRender = false;
+
+    // Process animations
+    for (let i = state.animations.length - 1; i >= 0; i--) {
+        state.animations[i].timer--;
+        needsRender = true;
+        if (state.animations[i].timer <= 0) {
+            state.animations.splice(i, 1);
+        }
+    }
+
+    // Process enemy deaths
+    for (let i = state.enemies.length - 1; i >= 0; i--) {
+        const e = state.enemies[i];
+        if (e.state === 'dead') {
+            e.deathTimer--;
+            needsRender = true;
+            if (e.deathTimer <= 0) {
+                state.enemies.splice(i, 1);
+            }
+        }
+    }
+
+    if (needsRender) render();
+    requestAnimationFrame(gameLoop);
+}
+
+function bindControls() {
+    function interactOrMove() {
+        const d = DIRS[state.player.dir];
+        const tx = state.player.x + d.dx;
+        const ty = state.player.y + d.dy;
+        const targetCell = getCell(tx, ty);
+
+        // Check if there is an enemy in front
+        let enemyInFront = false;
+        for (let e of state.enemies) {
+            if (e.x === tx && e.y === ty && e.state !== 'dead') {
+                enemyInFront = true;
+                break;
+            }
+        }
+
+        if (enemyInFront) {
+            attackFront();
+        } else if (targetCell === 5) {
+            // Secret Wall
+            if (!state.revealedSecrets[`${tx},${ty}`]) {
+                state.revealedSecrets[`${tx},${ty}`] = true;
+                state.quest.secretsFound = (state.quest.secretsFound || 0) + 1;
+
+                let extraMsg = "";
+                if (state.quest.secretsFound === state.quest.totalSecrets && state.quest.totalSecrets > 0) {
+                    state.player.gold += 100;
+                    extraMsg = " ALL SECRETS FOUND! +100G!";
+                }
+
+                showMessage("You found a secret..." + extraMsg, { color: colors.cyan });
+                if (audioCtx) playSound('powerup');
+
+                // Turn wall into floor
+                state.map[ty][tx] = 0;
+
+                // Drop a Potion
+                state.items.push({ x: tx, y: ty, type: 'Health Potion', name: 'Health Potion' });
+
+                render();
+            }
+        } else {
+            // Nothing to interact with, move
+            moveForward(1);
+        }
+    }
+
+    const keyMap = {
+        'KeyW': () => interactOrMove(),
+        'Space': () => interactOrMove(),
+        'KeyS': () => moveForward(-1),
+        'KeyA': () => turn(-1),
+        'KeyD': () => { if (state.appState === 'playing') turn(1); },
+        'KeyQ': () => { if (state.appState === 'playing') strafe(-1); },
+        'KeyE': () => { if (state.appState === 'playing') strafe(1); },
+        'KeyZ': () => { if (state.appState === 'playing') wait(); } // 'Z' for wait
+    };
+
+    window.addEventListener('keydown', (e) => {
+        if (state.appState === 'intro' && (e.code === 'Space' || e.code === 'Enter')) {
+            document.getElementById('intro-screen').classList.add('hidden');
+            state.appState = 'playing';
+            playGameMusic();
+            return;
+        }
+
+        if (state.appState === 'transition' && state.transitionReady && (e.code === 'Space' || e.code === 'Enter')) {
+            nextLevel();
+            return;
+        }
+
+        if (state.appState === 'low_health') {
+            state.appState = 'playing';
+            // Even if it unpaused, execute the keypress immediately (e.g. S to step back)
+        }
+
+        if (state.appState !== 'playing') return;
+        if (keyMap[e.code]) {
+            keyMap[e.code]();
+            updateUI(e.code);
+            render();
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        const btnId = 'btn-' + e.key.toLowerCase();
+        const btn = document.getElementById(btnId);
+        if (btn) btn.classList.remove('active');
+    });
+
+    // Also bind UI buttons
+    document.querySelectorAll('.ctrl-btn').forEach(btn => {
+        btn.addEventListener('mousedown', () => {
+            if (state.appState === 'low_health') state.appState = 'playing';
+
+            const code = 'Key' + btn.id.split('-')[1].toUpperCase();
+            if (state.appState === 'playing') {
+                if (keyMap[code]) {
+                    keyMap[code]();
+                    render();
+                }
+            }
+        });
+    });
+}
+
+function updateUI(code) {
+    const char = code.replace('Key', '').toLowerCase();
+    const btn = document.getElementById('btn-' + char);
+    if (btn) btn.classList.add('active');
+}
+
+function getCell(x, y) {
+    if (y >= 0 && y < state.map.length && x >= 0 && x < state.map[y].length) {
+        return state.map[y][x];
+    }
+    return 1; // Wall out of bounds
+}
+
+function checkAutoLoot() {
+    const px = state.player.x;
+    const py = state.player.y;
+
+    for (let i = state.items.length - 1; i >= 0; i--) {
+        const item = state.items[i];
+        if (item.x === px && item.y === py) {
+            if (item.type === 'fountain') {
+                if (!item.used) {
+                    item.used = true;
+                    // Interact with fountain
+                    state.player.hp = state.player.maxHp;
+                    playSound('powerup');
+                    showMessage("HEALTH RESTORED! GAME SAVED", { timer: 120, color: colors.cyan });
+                    updateUIState();
+                    // In a real game, localStorage.setItem() would be called here
+                }
+                continue; // Do not remove fountain, it is persistent
+            } else if (item.type === 'gold') {
+                state.player.gold += item.amount;
+                showMessage(`Found ${item.amount} Gold!`);
+            } else if (item.type === 'key' || item.type === 'Black Key') {
+                state.inventory.push(item.name);
+                showMessage(`Found ${item.name}!`);
+                if (item.name === 'Gold Key') state.quest.goldKeyFound = true;
+                if (item.name === 'Black Key') state.quest.blackKeyFound = true;
+            } else if (item.type === 'Health Potion') {
+                state.inventory.push(item.name);
+                showMessage(`Found ${item.name}!`, { timer: 120 });
+            } else if (item.type === 'chest') {
+                // Chests are opened, not picked up
+                // For now, just give gold and a potion
+                const goldAmount = Math.floor(Math.random() * 20) + 10;
+                state.player.gold += goldAmount;
+                state.inventory.push('Health Potion');
+                showMessage(`Opened Chest! Found ${goldAmount} Gold and a Health Potion!`);
+            } else {
+                state.inventory.push(item.name);
+                showMessage(`Found ${item.name}!`);
+            }
+            state.items.splice(i, 1);
+            playSound('hit'); // Simple sound for pickup
+            updateUIState();
+        }
+    }
+}
+
+function revealFog() {
+    if (!state.explored) return;
+    const px = state.player.x;
+    const py = state.player.y;
+    for (let yy = -1; yy <= 1; yy++) {
+        for (let xx = -1; xx <= 1; xx++) {
+            if (state.explored[py + yy] && state.explored[py + yy][px + xx] !== undefined) {
+                state.explored[py + yy][px + xx] = true;
+            }
+        }
+    }
+}
+
+function handleMove(nx, ny) {
+    const cell = getCell(nx, ny);
+    if (cell === 0 || cell === 3) {
+        // Prevent walking into enemies
+        if (!state.enemies.find(e => e.x === nx && e.y === ny && e.state !== 'dead')) {
+            state.player.x = nx;
+            state.player.y = ny;
+            playSound('step');
+            revealFog();
+            checkAutoLoot();
+            advanceTurn();
+            render(); // draw minimap updates etc
+        }
+    } else if (cell === 4) {
+        // Locked Door
+        const keyIdx = state.inventory.indexOf('Gold Key');
+        if (keyIdx !== -1) {
+            // Gold Key is no longer consumed to allow opening multiple rooms
+            state.map[ny][nx] = 0; // Open the door
+            state.quest.goldRoomOpened = true;
+            playSound('hit'); // Generic sound for opening
+            showMessage("UNLOCKED DOOR");
+            updateUIState();
+            render();
+        } else {
+            showMessage("LOCKED. NEEDS A GOLD KEY.");
+        }
+    } else if (cell === 2) {
+        const keyIdx = state.inventory.indexOf('Black Key');
+        if (keyIdx !== -1) {
+            state.inventory.splice(keyIdx, 1);
+            state.appState = 'transition';
+            state.transitionReady = false;
+            state.level++; // Increment early to show next level name during transition
+
+            updateUIState();
+
+            const transScreen = document.getElementById('transition-screen');
+            const prompt = document.getElementById('transition-prompt');
+            if (transScreen) transScreen.classList.remove('hidden');
+            if (prompt) prompt.classList.add('hidden');
+
+            playTransitionMusic();
+
+            setTimeout(() => {
+                if (state.appState === 'transition') {
+                    if (prompt) prompt.classList.remove('hidden');
+                    state.transitionReady = true;
+                }
+            }, 3000);
+            render();
+        } else {
+            showMessage("EXIT LOCKED. FIND THE BLACK KEY.");
+        }
+    }
+}
+
+function nextLevel() {
+    document.getElementById('transition-screen').classList.add('hidden');
+
+    // Wipe Keys
+    state.inventory = state.inventory.filter(item => item !== 'Gold Key' && item !== 'Black Key');
+
+    let w = 21, h = 21;
+    if (state.level === 2) {
+        w = 31; h = 31;
+    } else if (state.level > 2) {
+        w = Math.min(51, 31 + (state.level - 2) * 6);
+        h = Math.min(51, 31 + (state.level - 2) * 6);
+    }
+
+    state.map = generateMap(w, h);
+    state.appState = 'playing';
+    playGameMusic();
+    render();
+}
+
+window.warpToLevel = function (targetLevel) {
+    if (state.appState !== 'splash') return;
+
+    const splashScreen = document.getElementById('splash-screen');
+    if (splashScreen) splashScreen.style.display = 'none';
+
+    // Ensure audio context is ready
+    if (typeof audioCtx === 'undefined' || !audioCtx) {
+        initAudio();
+    }
+
+    // Reset stats for new game but set the target level
+    state.level = targetLevel;
+    state.player.hp = 20;
+    state.player.maxHp = 20;
+    state.player.gold = 0;
+    state.inventory = ['Rusty Sword', 'Health Potion'];
+    state.hands.left = null;
+    state.hands.right = null;
+
+    // nextLevel dynamically calculates W/H and generates the map
+    let w = 21, h = 21;
+    if (state.level === 2) {
+        w = 31; h = 31;
+    } else if (state.level > 2) {
+        w = Math.min(51, 31 + (state.level - 2) * 6);
+        h = Math.min(51, 31 + (state.level - 2) * 6);
+    }
+
+    state.map = generateMap(w, h);
+    state.appState = 'playing';
+    playGameMusic();
+    updateUIState();
+    render();
+};
+
+function moveForward(amount) {
+    const d = DIRS[state.player.dir];
+    const nx = state.player.x + d.dx * amount;
+    const ny = state.player.y + d.dy * amount;
+    handleMove(nx, ny);
+}
+
+function turn(amount) {
+    state.player.dir = (state.player.dir + amount + 4) % 4;
+}
+
+function strafe(amount) {
+    const sideDir = (state.player.dir + amount + 4) % 4;
+    const d = DIRS[sideDir];
+    const nx = state.player.x + d.dx;
+    const ny = state.player.y + d.dy;
+    handleMove(nx, ny);
+}
+
+// 3D Rendering (Painter's algorithm: draw from back to front)
+// We will draw cells relative to player view up to depth 5
+// Coordinates in view space:
+// z goes forward (0 to 5)
+// x goes left/right (-3 to +3)
+
+const MAX_DEPTH = 7;
+
+// Screen geometry for a standard perspective
+// Front-facing walls are rectangles: [left, top, width, height]
+// We can define the screen coordinates of the inner rectangle at each depth level.
+const depthRects = [
+    { l: 0, t: 0, w: 320, h: 240 }, // z=0 (Actually outside screen, or screen edge)
+    { l: 30, t: 20, w: 260, h: 200 }, // z=1
+    { l: 80, t: 60, w: 160, h: 120 }, // z=2
+    { l: 110, t: 85, w: 100, h: 70 }, // z=3
+    { l: 130, t: 105, w: 60, h: 30 }, // z=4
+    { l: 140, t: 115, w: 40, h: 10 }  // z=5
+];
+
+function drawWall(z, xOffset, isSideContext) {
+    // If it's a front wall, we draw the rectangle at depth z + 1 offset by xOffset * width_at_depth
+    // Actually, xOffset is typically -2, -1, 0, 1, 2
+    // A simpler approach: a front-facing wall at depth Z, offset X.
+
+    // Using a simple fixed perspective array for drawing trapezoids/rectangles.
+    // For a cleaner look, let's write custom projection relative to center:
+    // Screen is 320x240. Center is 160, 120.
+}
+
+let currentAnimationFrame = null;
+
+function render() {
+    if (state.appState !== 'playing' && state.appState !== 'low_health') return;
+
+    // Clear screen
+    ctx.fillStyle = colors.black;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Draw Floor and Ceiling
+    ctx.fillStyle = colors.darkgrey;
+    ctx.fillRect(0, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT / 2); // Floor
+
+    drawView();
+    if (state.level === 1 || state.level === 2) drawMist();
+    drawMinimap();
+    drawAnimations();
+
+    if (state.appState === 'low_health') {
+        // Red translucent overlay
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+        // Warning message
+        ctx.fillStyle = colors.yellow;
+        ctx.shadowColor = colors.black;
+        ctx.shadowBlur = 5;
+        ctx.font = '10px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const warning = "The next hit could mean death! Step back to escape the battle or drink a health potion";
+        const maxWidth = GAME_WIDTH * 0.8;
+        const words = warning.split(' ');
+        let line = '';
+        let lines = [];
+
+        for (let i = 0; i < words.length; i++) {
+            let testLine = line + words[i] + ' ';
+            let metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && i > 0) {
+                lines.push(line);
+                line = words[i] + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        lines.push(line);
+
+        let yStart = GAME_HEIGHT / 2 - (lines.length * 15) / 2;
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], GAME_WIDTH / 2, yStart);
+            yStart += 16;
+        }
+        ctx.shadowBlur = 0; // reset
+    }
+
+    // Schedule next frame if animations are active or mist is present
+    if (currentAnimationFrame) cancelAnimationFrame(currentAnimationFrame);
+    if (state.animations.length > 0 || state.level === 1 || state.level === 2) {
+        currentAnimationFrame = requestAnimationFrame(render);
+    }
+}
+
+function drawMinimap() {
+    const mw = minimapCanvas.width;
+    const mh = minimapCanvas.height;
+
+    minimapCtx.fillStyle = colors.black;
+    minimapCtx.fillRect(0, 0, mw, mh);
+
+    if (state.appState !== 'playing' || !state.map || !state.explored) return;
+
+    const map = state.map;
+    const w = map[0].length;
+    const h = map.length;
+
+    const ts = Math.floor(mw / w); // Tile size
+    const offX = Math.floor((mw - w * ts) / 2);
+    const offY = Math.floor((mh - h * ts) / 2);
+
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            if (!state.explored[y][x]) continue; // Fog of war
+            if (map[y][x] === 0 || map[y][x] === 3) {
+                minimapCtx.fillStyle = colors.brown;
+                minimapCtx.fillRect(offX + x * ts, offY + y * ts, ts, ts);
+            } else if (map[y][x] === 1) {
+                minimapCtx.fillStyle = colors.darkgrey;
+                minimapCtx.fillRect(offX + x * ts, offY + y * ts, ts, ts);
+            } else if (map[y][x] === 2) {
+                minimapCtx.fillStyle = colors.lightblue;
+                minimapCtx.fillRect(offX + x * ts, offY + y * ts, ts, ts);
+            } else if (map[y][x] === 4) {
+                minimapCtx.fillStyle = colors.orange; // Locked Door color on minimap
+                minimapCtx.fillRect(offX + x * ts, offY + y * ts, ts, ts);
+            }
+        }
+    }
+
+    // Draw player beacon
+    const px = state.player.x;
+    const py = state.player.y;
+    minimapCtx.fillStyle = (Date.now() % 500 < 250) ? colors.yellow : colors.orange; // Blink
+    minimapCtx.fillRect(offX + px * ts + 1, offY + py * ts + 1, ts - 2, ts - 2);
+
+    // Draw items on minimap
+    for (let item of state.items) {
+        if (state.explored[item.y] && state.explored[item.y][item.x]) {
+            if (item.type === 'fountain') {
+                minimapCtx.fillStyle = colors.cyan;
+                minimapCtx.fillRect(offX + item.x * ts + 1, offY + item.y * ts + 1, ts - 2, ts - 2);
+            } else if (item.type === 'chest') {
+                minimapCtx.fillStyle = colors.yellow;
+                minimapCtx.fillRect(offX + item.x * ts + 1, offY + item.y * ts + 1, ts - 2, ts - 2);
+            }
+        }
+    }
+
+    // Draw enemies on minimap
+    for (let e of state.enemies) {
+        if (e.state !== 'dead' && state.explored[e.y] && state.explored[e.y][e.x]) {
+            minimapCtx.fillStyle = colors.red;
+            minimapCtx.fillRect(offX + e.x * ts + 1, offY + e.y * ts + 1, ts - 2, ts - 2);
+        }
+    }
+}
+
+function drawMist() {
+    // Atmospheric Glow
+    if (state.level === 1) {
+        ctx.fillStyle = 'rgba(80, 0, 0, 0.3)'; // Constant eerie red tint over Everything
+    } else if (state.level === 2) {
+        ctx.fillStyle = 'rgba(0, 80, 0, 0.3)'; // Sickly green tint
+    }
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Drifting Mist Clouds
+    for (let i = 0; i < state.mistParticles.length; i++) {
+        let p = state.mistParticles[i];
+
+        if (state.level === 1) {
+            p.x -= (p.speed * 0.45); // Drift left
+            if (p.x + p.size < 0) {
+                p.x = GAME_WIDTH; // wrap around
+                p.y = GAME_HEIGHT / 2 - 20 + Math.random() * (GAME_HEIGHT / 2 + 20);
+            }
+        } else if (state.level === 2) {
+            p.x += (p.speed * 0.45); // Drift right
+            if (p.x - p.size > GAME_WIDTH) { // wrap around correctly logic fixed
+                p.x = -p.size * 2;
+                p.y = GAME_HEIGHT / 2 - 20 + Math.random() * (GAME_HEIGHT / 2 + 20);
+            }
+        }
+
+        ctx.fillStyle = `rgba(180, 180, 180, ${p.opacity})`;
+        ctx.fillRect(p.x, p.y, p.size * 2, p.size); // Rectangular pixel mist clusters
+
+        // Add a few scattered "pixels" around the block to make it look fragmented
+        ctx.fillRect(p.x - 4, p.y + p.size / 2, 4, 4);
+        ctx.fillRect(p.x + p.size * 2, p.y + p.size / 4, 8, 4);
+    }
+}
+
+function drawAnimations() {
+    let textOffsetY = GAME_HEIGHT / 2; // Start center
+
+    for (let a of state.animations) {
+        if (a.type === 'swipe') {
+            const t = a.timer / 10; // 1 to 0
+            ctx.strokeStyle = a.color || colors.white;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(100 + (1 - t) * 120, 50 + (1 - t) * 140);
+            ctx.lineTo(80 + (1 - t) * 120, 70 + (1 - t) * 140);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(220 - (1 - t) * 120, 50 + (1 - t) * 140);
+            ctx.lineTo(240 - (1 - t) * 120, 70 + (1 - t) * 140);
+            ctx.stroke();
+        } else if (a.type === 'text') {
+            let textColor = a.color || colors.yellow;
+            if (a.flash) {
+                // Flash 3 times over 3 seconds (180 frames)
+                // 180 / 3 = 60 frames per cycle (30 on, 30 off)
+                if (a.timer % 60 < 30) {
+                    textColor = 'transparent';
+                }
+            }
+
+            ctx.fillStyle = textColor;
+            ctx.font = '16px "Press Start 2P"';
+            ctx.textAlign = 'center';
+
+            // 40% less wide means max width is 60% of GAME_WIDTH 
+            const maxWidth = GAME_WIDTH * 0.6;
+            const words = a.text.split(' ');
+            let line = '';
+            let lines = [];
+
+            // Wrap text
+            for (let i = 0; i < words.length; i++) {
+                let testLine = line + words[i] + ' ';
+                let metrics = ctx.measureText(testLine);
+                let testWidth = metrics.width;
+                if (testWidth > maxWidth && i > 0) {
+                    lines.push(line);
+                    line = words[i] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+
+            // Draw stacked lines
+            const lineHeight = 20;
+            // First calculate total block height so we start rendering at the correct top offset
+            // We draw from textOffsetY downwards, then push textOffsetY down for the next message
+            for (let i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], GAME_WIDTH / 2, textOffsetY);
+                textOffsetY += lineHeight;
+            }
+            // Add spacing between different messages
+            textOffsetY += lineHeight * 0.5;
+        }
+    }
+}
+
+function drawPolygon(pts, fillStyle, strokeStyle) {
+    ctx.fillStyle = fillStyle;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    if (strokeStyle) {
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth = 2; // thicker lines for C64 style
+        ctx.stroke();
+    }
+}
+
+// Draw red dilapidated bricks procedural texture
+function drawBricks(pts, isSide, isDoor, isLocked, isSecret) {
+    if (isDoor && !isLocked) {
+        // --- EXIT DOOR FANCY STYLE ---
+        const exitColor = isSide ? colors.darkgrey : colors.purple; // Fancy purple color
+        drawPolygon(pts, exitColor, colors.black);
+
+        ctx.strokeStyle = colors.black;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 1; i < 4; i++) {
+            const t = i / 4;
+            const txTop = pts[0].x + (pts[1].x - pts[0].x) * t;
+            const tyTop = pts[0].y + (pts[1].y - pts[0].y) * t;
+            const txBot = pts[3].x + (pts[2].x - pts[3].x) * t;
+            const tyBot = pts[3].y + (pts[2].y - pts[3].y) * t;
+            ctx.moveTo(txTop, tyTop);
+            ctx.lineTo(txBot, tyBot);
+        }
+        ctx.stroke();
+
+        if (isSide) return; // Only draw text on front-facing doors
+
+        const cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+        const cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+        const height = Math.abs(pts[0].y - pts[3].y);
+
+        // Draw EXIT text
+        ctx.fillStyle = colors.yellow;
+        ctx.shadowColor = colors.yellow;
+        ctx.shadowBlur = 10;
+
+        const fontSize = Math.max(6, Math.floor(height * 0.12));
+        ctx.font = `${fontSize}px "Press Start 2P"`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.fillText("EXIT", cx, cy);
+        ctx.shadowBlur = 0; // reset
+        return;
+    }
+
+    if (isLocked) {
+        // --- LOCKED DOOR STYLE ---
+        const doorColor = isSide ? colors.darkgrey : colors.brown;
+        drawPolygon(pts, doorColor, colors.black);
+
+        ctx.strokeStyle = colors.black;
+        ctx.lineWidth = 2;
+
+        // Vertical planks
+        ctx.beginPath();
+        for (let i = 1; i < 4; i++) {
+            const t = i / 4;
+            const txTop = pts[0].x + (pts[1].x - pts[0].x) * t;
+            const tyTop = pts[0].y + (pts[1].y - pts[0].y) * t;
+            const txBot = pts[3].x + (pts[2].x - pts[3].x) * t;
+            const tyBot = pts[3].y + (pts[2].y - pts[3].y) * t;
+            ctx.moveTo(txTop, tyTop);
+            ctx.lineTo(txBot, tyBot);
+        }
+        ctx.stroke();
+
+        if (isSide) return; // Ignore ornate details on extremely skewed sides for speed
+
+        // Iron cross bands
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = colors.grey;
+        ctx.beginPath();
+        let t1 = 0.2;
+        ctx.moveTo(pts[0].x + (pts[3].x - pts[0].x) * t1, pts[0].y + (pts[3].y - pts[0].y) * t1);
+        ctx.lineTo(pts[1].x + (pts[2].x - pts[1].x) * t1, pts[1].y + (pts[2].y - pts[1].y) * t1);
+
+        let t2 = 0.8;
+        ctx.moveTo(pts[0].x + (pts[3].x - pts[0].x) * t2, pts[0].y + (pts[3].y - pts[0].y) * t2);
+        ctx.lineTo(pts[1].x + (pts[2].x - pts[1].x) * t2, pts[1].y + (pts[2].y - pts[1].y) * t2);
+        ctx.stroke();
+
+        // Glowing symbol in center
+        const cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+        const cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+        const height = Math.abs(pts[0].y - pts[3].y);
+        const r = height * 0.1;
+
+        ctx.fillStyle = colors.yellow;
+        ctx.shadowColor = colors.yellow;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0; // reset
+
+        return;
+    }
+
+    // Fill the wall base first
+    // Side walls get a darker shade to fake lighting
+    // Fill the wall base first
+    // Side walls get a darker shade to fake lighting
+    let mainColor = colors.red;
+    let sideColor = colors.brown;
+
+    if (state.level >= 2) {
+        mainColor = colors.green;
+        sideColor = colors.blue;
+    }
+
+    if (isDoor || isLocked) {
+        mainColor = isLocked ? colors.grey : colors.lightblue;
+        sideColor = isLocked ? colors.darkgrey : colors.blue;
+    }
+
+    const baseColor = isSide ? sideColor : mainColor;
+    const strokeColor = colors.black;
+    drawPolygon(pts, baseColor, strokeColor);
+
+    if (isSecret && !isDoor && !isLocked) {
+        // Draw one slightly lighter brick as a clue
+        const row = 2; // Middle row
+        const subdivs = 5;
+        const cols = isSide ? 3 : 5;
+        let cLeft = 1 / cols;
+        let cRight = 2 / cols;
+
+        let rTop = row / subdivs;
+        let rBot = (row + 1) / subdivs;
+
+        // Apply offset for brick pattern
+        if (row % 2 === 1) {
+            cLeft += (0.5 / cols);
+            cRight += (0.5 / cols);
+        }
+
+        const lxTop = pts[0].x + (pts[3].x - pts[0].x) * rTop;
+        const lyTop = pts[0].y + (pts[3].y - pts[0].y) * rTop;
+        const rxTop = pts[1].x + (pts[2].x - pts[1].x) * rTop;
+        const ryTop = pts[1].y + (pts[2].y - pts[1].y) * rTop;
+        const topLX = lxTop + (rxTop - lxTop) * cLeft;
+        const topLY = lyTop + (ryTop - lyTop) * cLeft;
+        const topRX = lxTop + (rxTop - lxTop) * cRight;
+        const topRY = lyTop + (ryTop - lyTop) * cRight;
+
+        const lxBot = pts[0].x + (pts[3].x - pts[0].x) * rBot;
+        const lyBot = pts[0].y + (pts[3].y - pts[0].y) * rBot;
+        const rxBot = pts[1].x + (pts[2].x - pts[1].x) * rBot;
+        const ryBot = pts[1].y + (pts[2].y - pts[1].y) * rBot;
+        const botLX = lxBot + (rxBot - lxBot) * cLeft;
+        const botLY = lyBot + (ryBot - lyBot) * cLeft;
+        const botRX = lxBot + (rxBot - lxBot) * cRight;
+        const botRY = lyBot + (ryBot - lyBot) * cRight;
+
+        // Define an even lighter shade for the clue brick (user requested it to be lighter)
+        // User update: made it too obvious, bringing it closer to the base colors (#880000 and #00cc55)
+        const secretShade = state.level >= 2 ? '#00dd55' : '#a00000';
+        drawPolygon([{ x: topLX, y: topLY }, { x: topRX, y: topRY }, { x: botRX, y: botRY }, { x: botLX, y: botLY }], secretShade, secretShade);
+    }
+
+    // Simple horizontal lines for brick joints
+    ctx.strokeStyle = colors.black;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+
+    const subdivs = 5;
+    for (let i = 1; i < subdivs; i++) {
+        const t = i / subdivs;
+        const lx = pts[0].x + (pts[3].x - pts[0].x) * t;
+        const ly = pts[0].y + (pts[3].y - pts[0].y) * t;
+        const rx = pts[1].x + (pts[2].x - pts[1].x) * t;
+        const ry = pts[1].y + (pts[2].y - pts[1].y) * t;
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(rx, ry);
+    }
+
+    // Vertical joints
+    for (let i = 0; i < subdivs; i++) {
+        const rowTTop = i / subdivs;
+        const rowTBot = (i + 1) / subdivs;
+        const cols = isSide ? 3 : 5; // sides are narrower in view
+
+        for (let j = 1; j < cols; j++) {
+            let tCol = j / cols;
+            // offset every second row for brick pattern
+            if (i % 2 === 1) {
+                tCol += (0.5 / cols);
+                if (tCol >= 1) continue;
+            }
+
+            const lxTop = pts[0].x + (pts[3].x - pts[0].x) * rowTTop;
+            const lyTop = pts[0].y + (pts[3].y - pts[0].y) * rowTTop;
+            const rxTop = pts[1].x + (pts[2].x - pts[1].x) * rowTTop;
+            const ryTop = pts[1].y + (pts[2].y - pts[1].y) * rowTTop;
+            const topX = lxTop + (rxTop - lxTop) * tCol;
+            const topY = lyTop + (ryTop - lyTop) * tCol;
+
+            const lxBot = pts[0].x + (pts[3].x - pts[0].x) * rowTBot;
+            const lyBot = pts[0].y + (pts[3].y - pts[0].y) * rowTBot;
+            const rxBot = pts[1].x + (pts[2].x - pts[1].x) * rowTBot;
+            const ryBot = pts[1].y + (pts[2].y - pts[1].y) * rowTBot;
+            const botX = lxBot + (rxBot - lxBot) * tCol;
+            const botY = lyBot + (ryBot - lyBot) * tCol;
+
+            ctx.moveTo(topX, topY);
+            ctx.lineTo(botX, botY);
+        }
+    }
+
+    ctx.stroke();
+
+    // Draw foliage/vines on Level 2 walls
+    if (state.level >= 2 && !isDoor && !isLocked) {
+        // Use a simple deterministic hash based on coordinates to draw static vines
+        const seed = (pts[0].x + pts[0].y + pts[3].x) % 100;
+        if (seed > 30) {
+            ctx.strokeStyle = colors.white; // Or dark green
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            // Draw a few dropping vines from the top
+            for (let v = 1; v <= 3; v++) {
+                const vt = (v * 0.25) + (seed % 10) * 0.01;
+                const topX = pts[0].x + (pts[1].x - pts[0].x) * vt;
+                const topY = pts[0].y + (pts[1].y - pts[0].y) * vt;
+
+                const dropScale = 0.3 + ((seed * v) % 40) * 0.01;
+                const botX = pts[0].x + (pts[3].x - pts[0].x) * vt;
+                const botY = pts[0].y + (pts[3].y - pts[0].y) * vt;
+
+                const endX = topX + (botX - topX) * dropScale;
+                const endY = topY + (botY - topY) * dropScale;
+
+                ctx.moveTo(topX, topY);
+                // Simple zigzag to simulate vine
+                ctx.lineTo(topX + (endX - topX) * 0.5 + 2, topY + (endY - topY) * 0.5);
+                ctx.lineTo(endX, endY);
+            }
+            ctx.stroke();
+        }
+    }
+}
+
+function renderFloor(x, z, mapX, mapY) {
+    if (z < 0) return;
+
+    const xl = x - 0.5;
+    const xr = x + 0.5;
+    const zf = z;
+    const zb = z + 1;
+
+    const p1 = project(xl, 0, zf); // tl
+    const p2 = project(xr, 0, zf); // tr
+    const p3 = project(xr, 0, zb); // br
+    const p4 = project(xl, 0, zb); // bl
+
+    if (state.level === 1) {
+        // Draw square tiles (black border)
+        drawPolygon([p1, p2, p3, p4], 'transparent', colors.black);
+    } else if (state.level >= 2) {
+        // Draw Grass Tufts deteriministically based on map coordinates
+        const seed = Math.abs((mapX * 37) ^ (mapY * 13)) % 100;
+
+        if (seed > 40) {
+            // Pick a random spot inside the tile coords
+            const tx = xl + 0.2 + (seed % 60) * 0.01;
+            const tz = zf + 0.2 + (seed % 50) * 0.01;
+
+            const gBase = project(tx, 0, tz);
+            const gTop1 = project(tx - 0.1, 0.1, tz);
+            const gTop2 = project(tx + 0.1, 0.15, tz);
+            const gTop3 = project(tx, 0.2, tz);
+
+            ctx.strokeStyle = colors.green;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(gBase.x, gBase.y);
+            ctx.lineTo(gTop1.x, gTop1.y);
+            ctx.moveTo(gBase.x, gBase.y);
+            ctx.lineTo(gTop2.x, gTop2.y);
+            ctx.moveTo(gBase.x, gBase.y);
+            ctx.lineTo(gTop3.x, gTop3.y);
+            ctx.stroke();
+        }
+    }
+}
+
+function renderSpikes(x, z) {
+    if (z < 0) return;
+
+    // Spikes are only UP on even turns
+    if (state.turnTick % 2 !== 0) return; // DOWN - don't draw spikes sticking out
+
+    // Draw 3 sharp spikes ascending from the floor
+    const p1Bot = project(x - 0.2, 0, z + 0.5);
+    const p1Top = project(x - 0.2, 0.3, z + 0.5);
+    // Using simple points for speed
+    const w = (p1Bot.y - p1Top.y) * 0.2; // Width of spike bases
+
+    ctx.fillStyle = colors.darkgrey;
+    ctx.strokeStyle = colors.white;
+    ctx.lineWidth = 1;
+
+    const drawSpike = (xOff, zOff) => {
+        const bot = project(xOff, 0, zOff);
+        const top = project(xOff, 0.3, zOff);
+        ctx.beginPath();
+        ctx.moveTo(bot.x - w, bot.y);
+        ctx.lineTo(top.x, top.y);
+        ctx.lineTo(bot.x + w, bot.y);
+        ctx.fill();
+        ctx.stroke();
+    };
+
+    drawSpike(x - 0.25, z + 0.25);
+    drawSpike(x, z + 0.5);
+    drawSpike(x + 0.25, z + 0.75);
+}
+
+function drawView() {
+    state.visibleSecretWalls = [];
+
+    // View projection:
+    // Z from MAX_DEPTH down to 1
+    // X from -2 to 2
+    const { x: px, y: py, dir } = state.player;
+    const forward = DIRS[dir];
+    const right = DIRS[(dir + 1) % 4];
+
+    // Calculate view slice
+    // We iterate from farthest to closest
+    for (let z = MAX_DEPTH; z >= 0; z--) {
+        // Draw outer blocks first, then inner to fix occlusion
+        const xOrder = [-6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0];
+        for (let x of xOrder) {
+            const mapX = px + forward.dx * z + right.dx * x;
+            const mapY = py + forward.dy * z + right.dy * x;
+
+            const cell = getCell(mapX, mapY);
+
+            // Render Floor (underneath everything else)
+            if (cell === 0 || cell === 3) {
+                renderFloor(x, z, mapX, mapY);
+            }
+
+            if (cell === 1 || cell === 2 || cell === 4 || cell === 5) {
+                renderBlock(x, z, mapX, mapY, cell);
+            } else if (cell === 3) { // Spike trap
+                renderSpikes(x, z);
+            }
+        }
+
+        // Draw items at this depth
+        for (let item of state.items) {
+            const dx = item.x - px;
+            const dy = item.y - py;
+
+            const itemZ = forward.dx * dx + forward.dy * dy;
+            const itemX = right.dx * dx + right.dy * dy;
+
+            if (itemZ === z && Math.abs(itemX) <= 6) {
+                renderItemDrop(itemX, itemZ, item);
+            }
+        }
+
+        // Draw enemies at this depth
+        for (let e of state.enemies) {
+            const dx = e.x - px;
+            const dy = e.y - py;
+
+            const ez = forward.dx * dx + forward.dy * dy;
+            const ex = right.dx * dx + right.dy * dy;
+
+            if (ez === z && Math.abs(ex) <= 6) {
+                renderEnemy(ex, ez, e);
+            }
+        }
+    }
+}
+
+// Function to project 3D point (x, y, z) into 2D (screenX, screenY)
+// In a block world, x is tile offset (-2 left ... 2 right)
+// z is depth (0 closest ... 5 farthest) 
+// We define logical coordinates for the corners of a tile at (x, z)
+// A tile at (x, z) has corners at x-0.5 and x+0.5, and depth z and z+1
+function project(x, y, z) {
+    // Camera is at x=0, y=0, z=0
+    // Standard perspective divide:
+    // We add a near plane offset so z=0 doesn't divide by zero
+    const fovScale = 200; // acts as zoom
+    const nearZ = 0.5; // Offset to put camera inside current tile
+
+    // Y: 0 is floor, 1 is ceiling
+    // We map y=0 to +1 logical (down in screen space) and y=1 to -1 logical (up in screen)
+    const viewY = (0.5 - y) * 2; // centered
+
+    const pZ = z + nearZ;
+
+    return {
+        x: (GAME_WIDTH / 2) + (x * fovScale) / pZ,
+        y: (GAME_HEIGHT / 2) + (viewY * fovScale) / pZ
+    };
+}
+
+function renderBlock(x, z, mapX, mapY, cellType) {
+    const isDoor = cellType === 2;
+    const isLocked = cellType === 4;
+    const isSecret = cellType === 5;
+
+    // Corners
+    // xLeft = x - 0.5, xRight = x + 0.5
+    // zFront = z, zBack = z + 1
+
+    const xl = x - 0.5;
+    const xr = x + 0.5;
+    const zf = z;
+    const zb = z + 1;
+
+    // If the block is strictly behind camera and out of near plane, skip it
+    if (zb < 0) return;
+
+    // Determine which faces are visible
+    // Front face
+    if (zf >= 0) {
+        const p1 = project(xl, 1, zf); // tl
+        const p2 = project(xr, 1, zf); // tr
+        const p3 = project(xr, 0, zf); // br
+        const p4 = project(xl, 0, zf); // bl
+
+        drawBricks([p1, p2, p3, p4], false, isDoor, isLocked, isSecret);
+
+        if (isSecret && !state.revealedSecrets[`${mapX},${mapY}`]) {
+            state.visibleSecretWalls.push({ poly: [p1, p2, p3, p4], mapX, mapY });
+        }
+    }
+
+    // Right side face (visible if x < 0)
+    if (x < 0) {
+        const p1 = project(xr, 1, zf); // tf
+        const p2 = project(xr, 1, zb); // tb
+        const p3 = project(xr, 0, zb); // bb
+        const p4 = project(xr, 0, zf); // bf
+
+        drawBricks([p1, p2, p3, p4], true, isDoor, isLocked, isSecret);
+
+        if (isSecret && !state.revealedSecrets[`${mapX},${mapY}`]) {
+            state.visibleSecretWalls.push({ poly: [p1, p2, p3, p4], mapX, mapY });
+        }
+    }
+
+    // Left side face (visible if x > 0)
+    if (x > 0) {
+        const p1 = project(xl, 1, zb); // tb
+        const p2 = project(xl, 1, zf); // tf
+        const p3 = project(xl, 0, zf); // bf
+        const p4 = project(xl, 0, zb); // bb
+
+        drawBricks([p1, p2, p3, p4], true, isDoor, isLocked, isSecret);
+
+        if (isSecret && !state.revealedSecrets[`${mapX},${mapY}`]) {
+            state.visibleSecretWalls.push({ poly: [p1, p2, p3, p4], mapX, mapY });
+        }
+    }
+}
+
+function renderEnemy(x, z, enemy) {
+    if (z < 0) return;
+
+    // Project Enemy Box
+    // Ground is y=0, top is y=0.8
+    const pTop = project(x, 0.8, z);
+    const pBot = project(x, 0, z);
+
+    let h = pBot.y - pTop.y;
+    let w = h * 0.5; // aspect ratio 1:2
+
+    let yOff = 0;
+
+    if (enemy.state === 'dead') {
+        // Fall down animation
+        const t = (15 - enemy.deathTimer) / 15; // 0 to 1
+        h = h * (1 - t * 0.8); // Shrink down
+        yOff = pBot.y - pTop.y - h;
+    } else {
+        // Floating/bobbing effect based on position and time
+        yOff = Math.sin(Date.now() / 300 + enemy.x + enemy.y) * 5;
+    }
+
+    const imgToDraw = enemy.type === 'Wraith' ? wraithImg : skeletonImg;
+    const isLoaded = enemy.type === 'Wraith' ? wraithLoaded : skeletonLoaded;
+
+    if (isLoaded) {
+        ctx.drawImage(imgToDraw, pTop.x - w / 2, pTop.y + yOff, w, h);
+
+        if (enemy.state === 'hit') {
+            ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+            ctx.fillRect(pTop.x - w / 2, pTop.y + yOff, w, h);
+        }
+
+        // Store bounds for click detection
+        enemy.screenBounds = { x: pTop.x - w / 2, y: pTop.y + yOff, w: w, h: h, diff: enemy.level - state.player.attack };
+    }
+
+    // Draw Nameplate if alive
+    if (enemy.state !== 'dead') {
+        const text = `LVL ${enemy.level} ${enemy.type.toUpperCase()}`;
+
+        // Determine danger color (Player is baseline Level 1 or 2 depending on attack)
+        const dangerDiff = enemy.level - state.player.attack;
+        let dangerColor = colors.white; // Below or equal
+        if (dangerDiff === 0) dangerColor = colors.lightblue;
+        else if (dangerDiff === 1) dangerColor = colors.yellow;
+        else if (dangerDiff === 2) dangerColor = colors.red;
+        else if (dangerDiff >= 3) dangerColor = colors.purple;
+
+        ctx.font = '8px "Press Start 2P"';
+        const txtWidth = ctx.measureText(text).width;
+
+        const boxX = pTop.x - txtWidth / 2 - 4;
+        const boxY = pTop.y + yOff - 20;
+        const boxW = txtWidth + 8;
+        const boxH = 14;
+
+        // Draw backing
+        ctx.fillStyle = colors.black;
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+        ctx.strokeStyle = dangerColor;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+        ctx.fillStyle = dangerColor;
+        ctx.fillText(text, pTop.x, boxY + 10);
+
+        // Enemy Health Bar
+        const barW = boxW;
+        const barH = 4;
+        const barY = boxY + boxH + 2;
+
+        ctx.fillStyle = colors.black;
+        ctx.fillRect(boxX, barY, barW, barH);
+
+        const hpPerc = Math.max(0, enemy.hp / enemy.maxHp);
+        ctx.fillStyle = colors.red;
+        ctx.fillRect(boxX + 1, barY + 1, (barW - 2) * hpPerc, barH - 2);
+
+        // Store screen bounds for mouse hover tooltip
+        enemy.screenBounds = { x: boxX, y: boxY, w: boxW, h: boxH, diff: dangerDiff };
+    } else {
+        enemy.screenBounds = null;
+    }
+}
+
+function renderItemDrop(x, z, item) {
+    if (z < 0) return;
+
+    // Center on floor
+    const pBot = project(x, 0, z); // Center base
+    const pTop = project(x, 0.4, z); // Item height
+
+    let h = pBot.y - pTop.y;
+    let w = h; // 1:1 aspect ratio for items
+
+    if (item.type === 'fountain') {
+        if (fountainLoaded) {
+            // Fountain is taller (30% increase to height) and pulses
+            const pulse = 1 + Math.sin(Date.now() / 200) * 0.1;
+            const drawW = w * 1.5 * pulse;
+            const drawH = h * 1.95 * pulse; // 1.5 * 1.3
+            // Keep base aligned by adjusting Y offset based on new height
+            ctx.drawImage(fountainImg, pTop.x - drawW / 2, pBot.y - drawH, drawW, drawH);
+        }
+    } else if (item.type === 'weapon') {
+        if (swordLoaded) {
+            // Draw sword upright properly
+            ctx.drawImage(swordImg, pTop.x - w * 0.5, pTop.y - h * 0.5, w, h * 1.5);
+        }
+    } else if (item.type === 'Health Potion' || item.type === 'Super Potion') {
+        if (potionLoaded) {
+            ctx.drawImage(potionImg, pTop.x - w / 2, pTop.y, w, h);
+        }
+    } else if (item.type === 'chest') {
+        if (chestLoaded) {
+            ctx.drawImage(chestImg, pTop.x - w * 0.75, pTop.y + h * 0.2, w * 1.5, h * 0.8);
+        }
+    } else if (item.type === 'key' || item.type === 'Black Key') {
+        if (item.type === 'key' && keyLoaded) {
+            // Keys are small and long
+            ctx.drawImage(keyImg, pTop.x - w * 0.25, pTop.y + h * 0.4, w * 0.5, h * 0.6);
+        } else if (item.type === 'Black Key' && blackKeyLoaded) {
+            // Black Key is larger and more visible
+            ctx.drawImage(blackKeyImg, pTop.x - w * 0.4, pTop.y + h * 0.2, w * 0.8, h * 0.8);
+        }
+    } else {
+        // Generic bag / gold pile
+        ctx.fillStyle = (item.type === 'gold') ? colors.yellow : colors.orange;
+        ctx.beginPath();
+        ctx.arc(pTop.x, pBot.y - h / 4, h / 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = colors.white;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+}
+
+function renderSpikes(x, z) {
+    if (z < 0) return;
+
+    // Base of cell
+    const pBot = project(x, 0, z);
+    const pTop = project(x, 0.8, z); // Make them taller and more vertical
+
+    let h = pBot.y - pTop.y;
+    let w = h; // Make width exactly match height so it's a 1x1 aspect ratio (fits the square)
+
+    const isUp = (state.turnTick % 2 === 0);
+
+    if (isUp && spikeUpLoaded) {
+        ctx.drawImage(spikeUpImg, pBot.x - w / 2, pBot.y - h, w, h);
+    } else if (!isUp && spikeDownLoaded) {
+        // Sink holes flat to the ground plane, just draw them heavily squashed
+        ctx.drawImage(spikeDownImg, pBot.x - w / 2, pBot.y - h * 0.5, w, h * 0.5);
+    }
+}
+const crtContainer = document.getElementById('crt-container');
+let tooltipDiv = null;
+
+function pointInPolygon(point, vs) {
+    let x = point.x, y = point.y;
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i].x, yi = vs[i].y;
+        let xj = vs[j].x, yj = vs[j].y;
+        let intersect = ((yi > y) != (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+crtContainer.addEventListener('click', (e) => {
+    if (state.appState !== 'playing' && state.appState !== 'low_health') return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = GAME_WIDTH / rect.width;
+    const scaleY = GAME_HEIGHT / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
+
+    // Check enemies first
+    for (let enemy of state.enemies) {
+        if (enemy.screenBounds && enemy.state !== 'dead') {
+            const b = enemy.screenBounds;
+            if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+                // Orient player towards enemy?
+                // For simplicity, if we click an enemy, just attack front if it's right in front of us
+                // The prompt requested clicking enemies to attack
+                attackFront(); // this attacks whatever is immediately in front.
+                return;
+            }
+        }
+    }
+
+    // Check Secret Walls
+    let point = { x: mx, y: my };
+    for (let w of state.visibleSecretWalls) {
+        if (pointInPolygon(point, w.poly)) {
+            if (!state.revealedSecrets[`${w.mapX},${w.mapY}`]) {
+                state.revealedSecrets[`${w.mapX},${w.mapY}`] = true;
+                state.quest.secretsFound = (state.quest.secretsFound || 0) + 1;
+
+                let extraMsg = "";
+                if (state.quest.secretsFound === state.quest.totalSecrets && state.quest.totalSecrets > 0) {
+                    state.player.gold += 100;
+                    extraMsg = " ALL SECRETS FOUND! +100G!";
+                }
+
+                showMessage("You found a secret..." + extraMsg, { color: colors.cyan });
+                if (audioCtx) playSound('powerup'); // distinct sound
+
+                // Turn wall into floor so player can enter
+                state.map[w.mapY][w.mapX] = 0;
+
+                // Spawn potion there
+                state.items.push({ x: w.mapX, y: w.mapY, type: 'Health Potion', name: 'Health Potion' });
+
+                render();
+                return;
+            }
+        }
+    }
+});
+
+crtContainer.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    // Scale mouse coordinates to logical 320x240 canvas space
+    const scaleX = GAME_WIDTH / rect.width;
+    const scaleY = GAME_HEIGHT / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
+
+    let hovering = null;
+    for (let enemy of state.enemies) {
+        if (enemy.screenBounds && enemy.state !== 'dead') {
+            const b = enemy.screenBounds;
+            if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+                hovering = enemy;
+                break;
+            }
+        }
+    }
+
+    if (hovering) {
+        if (!tooltipDiv) {
+            tooltipDiv = document.createElement('div');
+            tooltipDiv.style.position = 'absolute';
+            tooltipDiv.style.backgroundColor = 'var(--c-black)';
+            tooltipDiv.style.border = '2px solid var(--c-white)';
+            tooltipDiv.style.color = 'var(--c-white)';
+            tooltipDiv.style.padding = '5px';
+            tooltipDiv.style.fontSize = '10px';
+            tooltipDiv.style.pointerEvents = 'none';
+            tooltipDiv.style.zIndex = '100';
+            crtContainer.appendChild(tooltipDiv);
+        }
+
+        // Set message based on danger
+        const diff = hovering.screenBounds.diff;
+        let msg = "A weak creature.";
+        if (diff === 0) msg = "An even match.";
+        else if (diff === 1) msg = "Looks tough. Be careful.";
+        else if (diff === 2) msg = "Very dangerous!";
+        else if (diff >= 3) msg = "This one looks VERY dangerous, AVOID at all costs!";
+
+        tooltipDiv.innerText = msg;
+
+        // Position relative to cursor (use physical client coords for DOM overlay)
+        tooltipDiv.style.left = (e.clientX - rect.left + 15) + 'px';
+        tooltipDiv.style.top = (e.clientY - rect.top + 15) + 'px';
+    } else {
+        if (tooltipDiv) {
+            tooltipDiv.remove();
+            tooltipDiv = null;
+        }
+    }
+});
+
+// Initialize when ready
+window.onload = init;
