@@ -33,6 +33,7 @@ function checkAutoLoot() {
             } else if (item.type === 'gold') {
                 state.player.gold += item.amount;
                 showMessage(`Found ${item.amount} Gold!`);
+                checkGoldDebt();
             } else if (item.type === 'key' || item.type === 'Black Key') {
                 state.inventory.push(item.name);
                 showMessage(`Found ${item.name}!`);
@@ -46,6 +47,7 @@ function checkAutoLoot() {
                 state.player.gold += goldAmount;
                 state.inventory.push('Health Potion');
                 showMessage(`Opened Chest! Found ${goldAmount} Gold and a Health Potion!`);
+                checkGoldDebt();
             } else {
                 state.inventory.push(item.name);
                 showMessage(`Found ${item.name}!`);
@@ -124,8 +126,18 @@ function handleMove(nx, ny) {
 
             const transScreen = document.getElementById('transition-screen');
             const prompt = document.getElementById('transition-prompt');
+            const transMsg = document.getElementById('transition-message');
             if (transScreen) transScreen.classList.remove('hidden');
             if (prompt) prompt.classList.add('hidden');
+
+            // Custom transition messages after boss levels
+            if (transMsg) {
+                if (state.level === 6) {
+                    transMsg.innerText = "You have completed level 5 and are making headway into the deepest depths. You are now 1/4 of the way into the depths. Congrats on defeating the boss and good luck- the next 5 levels will be more challenging, but the loot will be better! - Unknown Mage";
+                } else {
+                    transMsg.innerText = "You descend further into the depths...";
+                }
+            }
 
             playTransitionMusic();
 
@@ -148,7 +160,9 @@ function nextLevel() {
     state.inventory = state.inventory.filter(item => item !== 'Gold Key' && item !== 'Black Key');
 
     let w = 27, h = 27;
-    if (state.level === 2) {
+    if (state.level === 5) {
+        w = 51; h = 51; // Boss level - biggest map yet
+    } else if (state.level === 2) {
         w = 31; h = 31;
     } else if (state.level > 2) {
         w = Math.min(51, 31 + (state.level - 2) * 6);
@@ -174,13 +188,16 @@ window.warpToLevel = function (targetLevel) {
     state.level = targetLevel;
     state.player.hp = 20;
     state.player.maxHp = 20;
-    state.player.gold = 0;
+    state.player.gold = -1000;
+    state.debtPaidOff = false;
     state.inventory = ['Rusty Sword', 'Health Potion'];
     state.hands.left = null;
     state.hands.right = null;
 
     let w = 27, h = 27;
-    if (state.level === 2) {
+    if (state.level === 5) {
+        w = 51; h = 51;
+    } else if (state.level === 2) {
         w = 31; h = 31;
     } else if (state.level > 2) {
         w = Math.min(51, 31 + (state.level - 2) * 6);

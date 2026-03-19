@@ -22,6 +22,12 @@ function renderEnemy(x, z, enemy) {
         w = h * 1.0;
     }
 
+    // Bosses are rendered 2x bigger and wider
+    if (enemy.isBoss) {
+        h = h * 2;
+        w = w * 2;
+    }
+
     let yOff = 0;
 
     if (enemy.state === 'dead') {
@@ -71,6 +77,7 @@ function renderEnemy(x, z, enemy) {
         'Whispering Terror': { img: whisperingTerrorImg, loaded: whisperingTerrorLoaded },
         'Null Entity':       { img: wraithImg,           loaded: wraithLoaded,    filter: 'invert(1) brightness(0.5)' },
         'The Depth Core':    { img: depthCoreImg,        loaded: depthCoreLoaded },
+        'Skrronzor the Level Boss': { img: skeletonImg, loaded: skeletonLoaded, filter: 'brightness(1.2) sepia(0.5) hue-rotate(340deg) saturate(2)' },
     };
 
     let imgToDraw = skeletonImg;
@@ -88,6 +95,17 @@ function renderEnemy(x, z, enemy) {
         imgToDraw = entry.img;
         isLoaded = entry.loaded;
         spriteFilter = entry.filter || null;
+    }
+
+    // Draw gold key peeking out under enemy that carries it
+    if (enemy.state !== 'dead') {
+        const hasKey = state.items.some(i => i.name === 'Gold Key' && i.x === enemy.x && i.y === enemy.y);
+        if (hasKey && keyLoaded) {
+            const keyW = w * 0.6;
+            const keyH = keyW * 0.4;
+            // Draw at enemy's feet, slightly offset
+            ctx.drawImage(keyImg, pTop.x - keyW * 0.1, pBot.y - keyH * 1.2, keyW, keyH);
+        }
     }
 
     if (isLoaded) {

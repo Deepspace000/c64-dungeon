@@ -219,10 +219,8 @@
     }
 
     .flex-grow {
-        flex: 0 0 auto;
-        margin-top: auto;
+        flex: 1 1 0;
         overflow-y: auto;
-        /* Pushed to column bottom so quest and inventory align across columns */
         display: flex;
         flex-direction: column;
     }
@@ -266,7 +264,9 @@
 
     .quest-section {
         border-color: var(--c-yellow);
-        min-height: 150px;
+        flex: 1 1 auto !important;
+        min-height: 200px;
+        overflow-y: auto;
     }
 
     .section-inventory {
@@ -465,35 +465,39 @@
     }
 
     .dev-warp-section {
-        margin-top: 15px;
-        border-top: 2px solid #555;
-        padding-top: 10px;
+        position: fixed;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        border: 2px solid #555;
+        border-radius: 8px;
+        padding: 8px;
+        z-index: 1001;
     }
 
     .dev-warp-heading {
-        font-size: 8px;
+        font-size: 7px;
         color: #aaa;
         margin-bottom: 5px;
         display: block;
+        text-align: center;
     }
 
     .dev-warp-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 3px;
         justify-content: center;
         max-width: 250px;
     }
 
     .dev-btn {
-        padding: 5px;
-        min-width: 40px;
-        font-size: 8px;
+        padding: 4px 2px;
+        min-width: 28px;
+        width: 28px;
+        font-size: 7px;
     }
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 #wait-btn {
@@ -966,4 +970,59 @@
 #tutorial-close-btn {
     width: 100%;
     font-size: 12px;
+}
+
+/* Dev Warp Buttons - right side panel on splash */
+.dev-warp-section {
+    position: fixed !important;
+    right: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    background-color: rgba(0, 0, 0, 0.85) !important;
+    border: 2px solid #555 !important;
+    border-radius: 8px !important;
+    padding: 8px !important;
+    z-index: 1001 !important;
+    margin: 0 !important;
+}
+
+.dev-warp-heading {
+    font-size: 7px !important;
+    color: #aaa !important;
+    margin-bottom: 5px !important;
+    display: block !important;
+    text-align: center !important;
+}
+
+.dev-warp-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 3px !important;
+    max-width: none !important;
+}
+
+.splash-btn.dev-btn {
+    width: 32px !important;
+    min-width: 32px !important;
+    padding: 5px 2px !important;
+    font-size: 7px !important;
+}
+
+.restart-level-btn {
+    width: 100%;
+    padding: 6px 4px;
+    margin-top: 5px;
+    background-color: var(--c-darkgrey);
+    color: var(--c-yellow);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    border: 1px solid var(--c-grey);
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.restart-level-btn:hover {
+    background-color: var(--c-red);
+    border-color: var(--c-lightred);
+    color: var(--c-white);
 }

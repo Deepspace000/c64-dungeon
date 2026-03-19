@@ -439,7 +439,7 @@ const DIRS = [
 
 const LEVEL_NAMES = [
     "The Red Chambers", "The Green Depths", "The Shadow Crypts",
-    "The Dripping Catacombs", "The Forgotten Crypt", "Halls of the Blind Warden",
+    "The Drowning Catacombs", "The Forgotten Crypt", "Halls of the Blind Warden",
     "The Sunken Library", "The Obsidian Labyrinth", "Chasm of Echoes",
     "The Abyssal Throne", "The Lower Depths", "Ruins of the Old Kings",
     "The Bloodstone Mines", "Caverns of the Slime Lord", "The Desolate Vault",
@@ -501,7 +501,7 @@ const LEVEL_ARMOR = [
 const BESTIARY = {
     3: [{ name: "Mimic Chest", hp: 25, attack: 12 }],
     4: [{ name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }],
-    5: [{ name: "Crypt Bat", hp: 20, attack: 15 }, { name: "Restless Zombie", hp: 30, attack: 12 }],
+    5: [{ name: "Mimic Chest", hp: 25, attack: 12 }, { name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }, { name: "Crypt Bat", hp: 20, attack: 15 }, { name: "Restless Zombie", hp: 30, attack: 12 }, { name: "Skrronzor the Level Boss", hp: 120, attack: 30, isBoss: true }],
     6: [{ name: "Gargoyle", hp: 40, attack: 18 }, { name: "Blind Warden", hp: 50, attack: 22 }],
     7: [{ name: "Ink Elemental", hp: 50, attack: 22 }, { name: "Ghostly Scribe", hp: 35, attack: 28 }],
     8: [{ name: "Minotaur", hp: 70, attack: 28 }, { name: "Obsidian Golem", hp: 90, attack: 24 }],
@@ -530,7 +530,7 @@ const state = {
     player: {
         x: 1, y: 1, dir: 0,
         hp: 20, maxHp: 20,
-        gold: 0,
+        gold: -1000,
         attack: 1,
         baseDefense: 0,
         armorDefense: 1,
@@ -560,6 +560,7 @@ const state = {
         generationMode: 'static'
     },
     mistParticles: [],
+    debtPaidOff: false,
     levelSwordFound: false,
     levelArmorFound: false,
     torches: []
@@ -661,21 +662,19 @@ chestImg.src = 'data:image/svg+xml;base64,' + btoa(chestSVG);
 
 const fountainImg = new Image(); let fountainLoaded = false;
 fountainImg.onload = () => { fountainLoaded = true; };
-fountainImg.src = "c64_fountain.png";
+fountainImg.src = "fountain_asset.png?v=38";
 
 const swordImg = new Image(); let swordLoaded = false;
 swordImg.onload = () => { swordLoaded = true; };
 swordImg.src = "c64_sword.png";
 
-const keySVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 12"><circle cx="6" cy="6" r="5" fill="#EEEE77" stroke="#664400" stroke-width="1"/><rect x="10" y="4" width="12" height="4" fill="#EEEE77"/><rect x="18" y="2" width="3" height="4" fill="#EEEE77"/><rect x="22" y="2" width="2" height="4" fill="#EEEE77"/><circle cx="6" cy="6" r="2" fill="#664400"/></svg>`;
 const keyImg = new Image(); let keyLoaded = false;
 keyImg.onload = () => { keyLoaded = true; };
-keyImg.src = 'data:image/svg+xml;base64,' + btoa(keySVG);
+keyImg.src = "gold_asset.png?v=38";
 
-const blackKeySVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 12"><circle cx="6" cy="6" r="5" fill="#333333" stroke="#777777" stroke-width="1"/><rect x="10" y="4" width="12" height="4" fill="#333333"/><rect x="18" y="2" width="3" height="4" fill="#333333"/><rect x="22" y="2" width="2" height="4" fill="#333333"/><circle cx="6" cy="6" r="2" fill="#000000"/></svg>`;
 const blackKeyImg = new Image(); let blackKeyLoaded = false;
 blackKeyImg.onload = () => { blackKeyLoaded = true; };
-blackKeyImg.src = 'data:image/svg+xml;base64,' + btoa(blackKeySVG);
+blackKeyImg.src = "black_asset.png?v=38";
 
 const spikeUpSVG = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
@@ -786,7 +785,8 @@ function generateMap(W, H) {
         for (let attempts = 0; attempts < 100; attempts++) {
             let x = Math.floor(Math.random() * (W - 2)) + 1;
             let y = Math.floor(Math.random() * (H - 2)) + 1;
-            if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
+            const distToPlayer = Math.abs(x - state.player.x) + Math.abs(y - state.player.y);
+            if (map[y][x] === 0 && distToPlayer >= 3) {
                 if (!state.enemies.find(e => e.x === x && e.y === y)) {
                     const openness = getOpenness(x, y);
                     const isRoom = openness >= 6;
@@ -826,7 +826,7 @@ function generateMap(W, H) {
         2: ['Skeleton', 'Skeleton', 'Wraith'],
         3: ['Cloaked Skeleton', 'Mimic Chest', 'Cloaked Skeleton'],
         4: ['Cave Slime', 'Giant Rat', 'Cave Slime', 'Giant Rat'],
-        5: ['Crypt Bat', 'Restless Zombie', 'Crypt Bat'],
+        5: ['Skeleton', 'Wraith', 'Cloaked Skeleton', 'Mimic Chest', 'Cave Slime', 'Giant Rat', 'Crypt Bat', 'Restless Zombie'],
         6: ['Gargoyle', 'Blind Warden', 'Gargoyle'],
         7: ['Ink Elemental', 'Ghostly Scribe', 'Ink Elemental'],
         8: ['Minotaur', 'Obsidian Golem'],
@@ -852,11 +852,34 @@ function generateMap(W, H) {
         }
     } else {
         const pool = levelEnemyPools[state.level] || levelEnemyPools[3];
-        const numEnemies = 4 + Math.floor(Math.random() * 3);
+        const numEnemies = (state.level === 5) ? 10 + Math.floor(Math.random() * 4) : 4 + Math.floor(Math.random() * 3);
         for (let i = 0; i < numEnemies; i++) {
             const type = pool[Math.floor(Math.random() * pool.length)];
             const lvl = 1 + Math.floor(Math.random() * Math.min(state.level, 5));
             if (trySpawnEnemy(type, lvl)) spawned++;
+        }
+
+        // Spawn boss on boss levels (every 5th) — force-place in a room
+        if (state.level % 5 === 0) {
+            const bossEntry = (BESTIARY[state.level] || []).find(e => e.isBoss);
+            if (bossEntry) {
+                let bossPlaced = false;
+                for (let attempts = 0; attempts < 200 && !bossPlaced; attempts++) {
+                    let x = Math.floor(Math.random() * (W - 2)) + 1;
+                    let y = Math.floor(Math.random() * (H - 2)) + 1;
+                    if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y) &&
+                        !state.enemies.find(e => e.x === x && e.y === y)) {
+                        state.enemies.push({
+                            x, y, hp: bossEntry.hp, maxHp: bossEntry.hp,
+                            attack: bossEntry.attack, type: bossEntry.name,
+                            level: state.level, state: 'idle', name: bossEntry.name,
+                            isBoss: true, dropsGoldKey: true
+                        });
+                        bossPlaced = true;
+                        spawned++;
+                    }
+                }
+            }
         }
     }
 
@@ -866,6 +889,9 @@ function generateMap(W, H) {
             state.items.push({ x: lvl5.x, y: lvl5.y, type: 'key', name: 'Gold Key' });
             goldKeyDropped = true;
         }
+    } else if (state.level % 5 === 0) {
+        // Boss levels: boss drops the gold key, don't place it on the ground
+        goldKeyDropped = state.enemies.some(e => e.dropsGoldKey);
     } else {
         const floorPool = levelEnemyPools[state.level] || levelEnemyPools[3];
         const lvl5Pool = floorPool.filter(t => t !== 'Mimic Chest');
@@ -892,12 +918,30 @@ function generateMap(W, H) {
 
     if (state.level >= 2) {
         let fountainPlaced = false;
-        while (!fountainPlaced) {
+        for (let attempts = 0; attempts < 500 && !fountainPlaced; attempts++) {
             let x = Math.floor(Math.random() * (W - 2)) + 1;
             let y = Math.floor(Math.random() * (H - 2)) + 1;
             if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
-                state.items.push({ x, y, type: 'fountain', name: 'Save Fountain', persistent: true });
-                fountainPlaced = true;
+                // Only place in open areas (rooms), not corridors
+                const openness = getOpenness(x, y);
+                if (openness >= 6 || attempts > 400) {
+                    state.items.push({ x, y, type: 'fountain', name: 'Save Fountain', persistent: true });
+                    fountainPlaced = true;
+                }
+            }
+        }
+    }
+
+    // Place potions: 5 on level 1, +1 per level
+    const numPotions = 4 + state.level;
+    for (let i = 0; i < numPotions; i++) {
+        for (let att = 0; att < 50; att++) {
+            let x = Math.floor(Math.random() * (W - 2)) + 1;
+            let y = Math.floor(Math.random() * (H - 2)) + 1;
+            if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y) &&
+                !state.items.some(it => it.x === x && it.y === y)) {
+                state.items.push({ x, y, type: 'Health Potion', name: 'Health Potion' });
+                break;
             }
         }
     }
@@ -1123,6 +1167,44 @@ function generateMap(W, H) {
         }
     }
 
+    // Level 4 - Drowning Catacombs: drips, puddles, blue mist
+    state.drips = [];
+    state.puddles = [];
+    if (state.level === 4) {
+        // Blue mist particles
+        for (let i = 0; i < 30; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT * 0.5 + Math.random() * (GAME_HEIGHT * 0.5),
+                speed: 0.1 + Math.random() * 0.4,
+                size: 10 + Math.random() * 30,
+                opacity: 0.03 + Math.random() * 0.1
+            });
+        }
+        // Dripping water drops
+        for (let i = 0; i < 12; i++) {
+            state.drips.push({
+                x: 20 + Math.random() * (GAME_WIDTH - 40),
+                y: Math.random() * (GAME_HEIGHT * 0.3),
+                speed: 1.0 + Math.random() * 2.0,
+                size: 2 + Math.random() * 3,
+                opacity: 0.4 + Math.random() * 0.5,
+                splashTimer: 0
+            });
+        }
+        // Puddles on the floor
+        for (let i = 0; i < 8; i++) {
+            state.puddles.push({
+                x: 30 + Math.random() * (GAME_WIDTH - 60),
+                y: GAME_HEIGHT * 0.7 + Math.random() * (GAME_HEIGHT * 0.25),
+                w: 12 + Math.random() * 30,
+                h: 3 + Math.random() * 5,
+                shimmer: Math.random() * Math.PI * 2,
+                opacity: 0.15 + Math.random() * 0.2
+            });
+        }
+    }
+
     // Torches for level 3
     if (state.level === 3) {
         for (let y = 1; y < H - 1; y++) {
@@ -1192,6 +1274,26 @@ function init() {
             splashScreen.style.display = 'flex';
             document.getElementById('btn-resume').classList.remove('hidden');
             playSplashMusic();
+        });
+    }
+
+    const btnRestart = document.getElementById('btn-restart-level');
+    if (btnRestart) {
+        btnRestart.addEventListener('click', () => {
+            if (state.appState !== 'playing') return;
+            const currentLevel = state.level;
+            const currentGold = state.player.gold;
+            const currentDebt = state.debtPaidOff;
+            state.map = generateMap(
+                currentLevel === 5 ? 51 : currentLevel === 2 ? 31 : currentLevel > 2 ? Math.min(51, 31 + (currentLevel - 2) * 6) : 27,
+                currentLevel === 5 ? 51 : currentLevel === 2 ? 31 : currentLevel > 2 ? Math.min(51, 31 + (currentLevel - 2) * 6) : 27
+            );
+            // Preserve gold/debt across restart
+            state.player.gold = currentGold;
+            state.debtPaidOff = currentDebt;
+            updateUIState();
+            render();
+            showMessage("LEVEL RESTARTED!");
         });
     }
 

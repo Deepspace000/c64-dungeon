@@ -37,7 +37,7 @@ export const LEVEL_NAMES = [
     "The Red Chambers",              // Floor 1
     "The Green Depths",              // Floor 2
     "The Shadow Crypts",             // Floor 3
-    "The Dripping Catacombs",        // Floor 4
+    "The Drowning Catacombs",        // Floor 4
     "The Forgotten Crypt",           // Floor 5
     "Halls of the Blind Warden",     // Floor 6
     "The Sunken Library",            // Floor 7
@@ -109,7 +109,7 @@ export const LEVEL_THEMES = {
     1: { wallColor: colors.red, floorColor: colors.darkgrey, fogColor: colors.black, effect: 'smoke' },
     2: { wallColor: colors.green, floorColor: colors.darkgrey, fogColor: colors.black, effect: 'water' },
     3: { wallColor: colors.darkgrey, floorColor: colors.black, fogColor: colors.black, effect: 'mist' },
-    4: { wallColor: colors.cyan, floorColor: colors.blue, fogColor: colors.darkgrey, effect: 'water' },
+    4: { wallColor: colors.blue, floorColor: colors.darkgrey, fogColor: colors.purple, effect: 'water' },
     5: { wallColor: colors.purple, floorColor: colors.black, fogColor: colors.darkgrey, effect: 'clouds' },
     6: { wallColor: colors.lightgrey, floorColor: colors.white, fogColor: colors.grey, effect: 'light bugs' },
     7: { wallColor: colors.blue, floorColor: colors.lightblue, fogColor: colors.cyan, effect: 'water' },
@@ -131,7 +131,7 @@ export const LEVEL_THEMES = {
 export const BESTIARY = {
     3: [{ name: "Mimic Chest", hp: 25, attack: 12 }],
     4: [{ name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }],
-    5: [{ name: "Crypt Bat", hp: 20, attack: 15 }, { name: "Restless Zombie", hp: 30, attack: 12 }],
+    5: [{ name: "Mimic Chest", hp: 25, attack: 12 }, { name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }, { name: "Crypt Bat", hp: 20, attack: 15 }, { name: "Restless Zombie", hp: 30, attack: 12 }, { name: "Skrronzor the Level Boss", hp: 120, attack: 30, isBoss: true }],
     6: [{ name: "Gargoyle", hp: 40, attack: 18 }, { name: "Blind Warden", hp: 50, attack: 22 }],
     7: [{ name: "Ink Elemental", hp: 50, attack: 22 }, { name: "Ghostly Scribe", hp: 35, attack: 28 }],
     8: [{ name: "Minotaur", hp: 70, attack: 28 }, { name: "Obsidian Golem", hp: 90, attack: 24 }],
@@ -190,8 +190,10 @@ export const state = {
         generationMode: 'static'
     },
     mistParticles: [],
+    drips: [],
+    puddles: [],
 
-    // Gemini's new properties tracking 
+    // Gemini's new properties tracking
     levelSwordFound: false,
     levelArmorFound: false,
     torches: []

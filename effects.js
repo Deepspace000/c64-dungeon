@@ -22,6 +22,11 @@ function render() {
 
     drawView();
     if (state.level === 1 || state.level === 2) drawMist();
+    if (state.level === 4) {
+        drawPuddles();
+        drawBlueMist();
+        drawDrips();
+    }
     drawLighting();
     drawMinimap();
     drawAnimations();
@@ -64,10 +69,13 @@ function render() {
     }
 
     if (currentAnimationFrame) cancelAnimationFrame(currentAnimationFrame);
-    if (state.animations.length > 0 || state.level === 1 || state.level === 2 || state.level === 3) {
+    if (state.animations.length > 0 || state.level === 1 || state.level === 2 || state.level === 3 || state.level === 4) {
         currentAnimationFrame = requestAnimationFrame(render);
     }
 }
+
+// Minimap zoom state: false = full map, true = zoomed on player
+if (typeof state.minimapZoomed === 'undefined') state.minimapZoomed = false;
 
 function drawMinimap() {
     const mw = minimapCanvas.width;
@@ -79,55 +87,95 @@ function drawMinimap() {
     if (state.appState !== 'playing' || !state.map || !state.explored) return;
 
     const map = state.map;
-    const w = map[0].length;
-    const h = map.length;
+    const mapW = map[0].length;
+    const mapH = map.length;
+    const px = state.player.x;
+    const py = state.player.y;
 
-    const ts = Math.floor(mw / w);
-    const offX = Math.floor((mw - w * ts) / 2);
-    const offY = Math.floor((mh - h * ts) / 2);
+    let ts, offX, offY, viewX0, viewY0, viewX1, viewY1;
 
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
+    if (state.minimapZoomed) {
+        // Zoomed: 4px per tile, centered on player
+        ts = 4;
+        const tilesVisibleX = Math.floor(mw / ts);
+        const tilesVisibleY = Math.floor(mh / ts);
+        viewX0 = Math.max(0, px - Math.floor(tilesVisibleX / 2));
+        viewY0 = Math.max(0, py - Math.floor(tilesVisibleY / 2));
+        viewX1 = Math.min(mapW, viewX0 + tilesVisibleX);
+        viewY1 = Math.min(mapH, viewY0 + tilesVisibleY);
+        // Recalculate start if we hit the edge
+        viewX0 = Math.max(0, viewX1 - tilesVisibleX);
+        viewY0 = Math.max(0, viewY1 - tilesVisibleY);
+        offX = Math.floor((mw - (viewX1 - viewX0) * ts) / 2);
+        offY = Math.floor((mh - (viewY1 - viewY0) * ts) / 2);
+    } else {
+        // Full map view
+        ts = Math.max(1, Math.floor(Math.min(mw / mapW, mh / mapH)));
+        viewX0 = 0; viewY0 = 0;
+        viewX1 = mapW; viewY1 = mapH;
+        offX = Math.floor((mw - mapW * ts) / 2);
+        offY = Math.floor((mh - mapH * ts) / 2);
+    }
+
+    for (let y = viewY0; y < viewY1; y++) {
+        for (let x = viewX0; x < viewX1; x++) {
             if (!state.explored[y][x]) continue;
+            const dx = (x - viewX0) * ts + offX;
+            const dy = (y - viewY0) * ts + offY;
             if (map[y][x] === 0 || map[y][x] === 3) {
                 minimapCtx.fillStyle = colors.brown;
-                minimapCtx.fillRect(offX + x * ts, offY + y * ts, ts, ts);
+                minimapCtx.fillRect(dx, dy, ts, ts);
             } else if (map[y][x] === 1) {
                 minimapCtx.fillStyle = colors.darkgrey;
-                minimapCtx.fillRect(offX + x * ts, offY + y * ts, ts, ts);
+                minimapCtx.fillRect(dx, dy, ts, ts);
             } else if (map[y][x] === 2) {
                 minimapCtx.fillStyle = colors.lightblue;
-                minimapCtx.fillRect(offX + x * ts, offY + y * ts, ts, ts);
+                minimapCtx.fillRect(dx, dy, ts, ts);
             } else if (map[y][x] === 4) {
                 minimapCtx.fillStyle = colors.orange;
-                minimapCtx.fillRect(offX + x * ts, offY + y * ts, ts, ts);
+                minimapCtx.fillRect(dx, dy, ts, ts);
             }
         }
     }
 
-    const px = state.player.x;
-    const py = state.player.y;
+    // Draw player - always visible with a blinking dot
+    const playerDx = (px - viewX0) * ts + offX;
+    const playerDy = (py - viewY0) * ts + offY;
+    const playerSize = Math.max(ts, 3);
     minimapCtx.fillStyle = (Date.now() % 500 < 250) ? colors.yellow : colors.orange;
-    minimapCtx.fillRect(offX + px * ts + 1, offY + py * ts + 1, ts - 2, ts - 2);
+    minimapCtx.fillRect(playerDx, playerDy, playerSize, playerSize);
 
     for (let item of state.items) {
-        if (state.explored[item.y] && state.explored[item.y][item.x]) {
-            if (item.type === 'fountain') {
-                minimapCtx.fillStyle = colors.cyan;
-                minimapCtx.fillRect(offX + item.x * ts + 1, offY + item.y * ts + 1, ts - 2, ts - 2);
-            } else if (item.type === 'chest') {
-                minimapCtx.fillStyle = colors.yellow;
-                minimapCtx.fillRect(offX + item.x * ts + 1, offY + item.y * ts + 1, ts - 2, ts - 2);
+        if (item.x >= viewX0 && item.x < viewX1 && item.y >= viewY0 && item.y < viewY1) {
+            if (state.explored[item.y] && state.explored[item.y][item.x]) {
+                const dx = (item.x - viewX0) * ts + offX;
+                const dy = (item.y - viewY0) * ts + offY;
+                if (item.type === 'fountain') {
+                    minimapCtx.fillStyle = colors.cyan;
+                    minimapCtx.fillRect(dx, dy, ts, ts);
+                } else if (item.type === 'chest') {
+                    minimapCtx.fillStyle = colors.yellow;
+                    minimapCtx.fillRect(dx, dy, ts, ts);
+                }
             }
         }
     }
 
     for (let e of state.enemies) {
-        if (e.state !== 'dead' && state.explored[e.y] && state.explored[e.y][e.x]) {
-            minimapCtx.fillStyle = colors.red;
-            minimapCtx.fillRect(offX + e.x * ts + 1, offY + e.y * ts + 1, ts - 2, ts - 2);
+        if (e.x >= viewX0 && e.x < viewX1 && e.y >= viewY0 && e.y < viewY1) {
+            if (e.state !== 'dead' && state.explored[e.y] && state.explored[e.y][e.x]) {
+                const dx = (e.x - viewX0) * ts + offX;
+                const dy = (e.y - viewY0) * ts + offY;
+                minimapCtx.fillStyle = e.isBoss ? colors.purple : colors.red;
+                minimapCtx.fillRect(dx, dy, ts, ts);
+            }
         }
     }
+
+    // Zoom indicator
+    minimapCtx.fillStyle = colors.lightgrey;
+    minimapCtx.font = '7px "Press Start 2P"';
+    minimapCtx.fillText(state.minimapZoomed ? '[-]' : '[+]', mw - 22, mh - 3);
 }
 
 function drawMist() {
@@ -159,6 +207,90 @@ function drawMist() {
         ctx.fillRect(p.x, p.y, p.size * 2, p.size);
         ctx.fillRect(p.x - 4, p.y + p.size / 2, 4, 4);
         ctx.fillRect(p.x + p.size * 2, p.y + p.size / 4, 8, 4);
+    }
+}
+
+function drawBlueMist() {
+    // Blue-tinted fog overlay
+    ctx.fillStyle = 'rgba(0, 40, 100, 0.25)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Drifting blue mist particles
+    for (let i = 0; i < state.mistParticles.length; i++) {
+        let p = state.mistParticles[i];
+        p.x += p.speed * 0.3;
+        if (p.x - p.size > GAME_WIDTH) {
+            p.x = -p.size * 2;
+            p.y = GAME_HEIGHT * 0.5 + Math.random() * (GAME_HEIGHT * 0.5);
+        }
+        ctx.fillStyle = `rgba(80, 140, 220, ${p.opacity})`;
+        ctx.fillRect(p.x, p.y, p.size * 2, p.size);
+        ctx.fillRect(p.x - 3, p.y + p.size / 2, 3, 3);
+        ctx.fillRect(p.x + p.size * 2, p.y + p.size / 4, 6, 3);
+    }
+}
+
+function drawDrips() {
+    for (let d of state.drips) {
+        if (d.splashTimer > 0) {
+            // Splash ripple at landing point
+            const progress = d.splashTimer / 15;
+            const rippleR = 3 + (1 - progress) * 8;
+            ctx.strokeStyle = `rgba(100, 180, 255, ${progress * 0.6})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(d.splashX, d.splashY, rippleR, rippleR * 0.3, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            d.splashTimer -= 1;
+            if (d.splashTimer <= 0) {
+                // Reset drip to top
+                d.x = 20 + Math.random() * (GAME_WIDTH - 40);
+                d.y = Math.random() * 10;
+            }
+        } else {
+            // Falling water drop
+            d.y += d.speed;
+
+            // Teardrop shape
+            ctx.fillStyle = `rgba(100, 180, 255, ${d.opacity})`;
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+            ctx.fill();
+            // Streak above
+            ctx.strokeStyle = `rgba(100, 180, 255, ${d.opacity * 0.5})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(d.x, d.y - d.size);
+            ctx.lineTo(d.x, d.y - d.size - 4 - d.speed * 2);
+            ctx.stroke();
+
+            // Hit the floor zone
+            if (d.y > GAME_HEIGHT * 0.65 + Math.random() * GAME_HEIGHT * 0.2) {
+                d.splashX = d.x;
+                d.splashY = d.y;
+                d.splashTimer = 15;
+            }
+        }
+    }
+}
+
+function drawPuddles() {
+    const t = Date.now() / 1000;
+    for (let p of state.puddles) {
+        p.shimmer += 0.02;
+        const shimmerAlpha = p.opacity + Math.sin(p.shimmer) * 0.05;
+
+        // Dark water puddle
+        ctx.fillStyle = `rgba(20, 60, 120, ${shimmerAlpha})`;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.w / 2, p.h / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Light reflection highlight
+        ctx.fillStyle = `rgba(100, 180, 255, ${shimmerAlpha * 0.4 + Math.sin(t + p.x) * 0.1})`;
+        ctx.beginPath();
+        ctx.ellipse(p.x - p.w * 0.15, p.y - p.h * 0.1, p.w * 0.2, p.h * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 

@@ -16,6 +16,15 @@ function showMessage(msg, options = {}) {
     });
 }
 
+// Check if gold debt has been paid off
+function checkGoldDebt() {
+    if (state.player.gold >= 0 && !state.debtPaidOff) {
+        state.debtPaidOff = true;
+        showMessage("YOUR DEBT IS PAID! SOMETHING STIRS IN THE DEPTHS...", { color: colors.yellow, flash: true });
+        // TODO: Mirko will decide what event occurs here
+    }
+}
+
 function updateUIState() {
     calcPlayerAttack();
     calcPlayerDefense();
@@ -35,7 +44,15 @@ function updateUIState() {
     if (hpFill) hpFill.style.width = `${(state.player.hp / state.player.maxHp) * 100}%`;
 
     const goldText = document.getElementById('gold-text');
-    if (goldText) goldText.innerText = state.player.gold;
+    if (goldText) {
+        if (state.player.gold < 0) {
+            goldText.innerText = `-${Math.abs(state.player.gold)}`;
+            goldText.style.color = 'var(--c-red)';
+        } else {
+            goldText.innerText = state.player.gold;
+            goldText.style.color = '';
+        }
+    }
 
     const qText = document.getElementById('quest-text');
     if (qText) {
@@ -44,7 +61,8 @@ function updateUIState() {
             <span style='color:var(--c-green)'>2. Find the Gold Key-</span> <span style='color:var(--c-white)'>(Opens the mystery room).</span><br>
             <span style='color:var(--c-green)'>3. Find the black key-</span> <span style='color:var(--c-white)'>(Unlocks the exit).</span><br>
             <span style='color:var(--c-green)'>4. Find all secret walls-</span> <span style='color:var(--c-white)'>(Found: ${state.quest.secretsFound}/${state.quest.totalSecrets}).</span><br>
-            <span style='color:var(--c-green)'>5. Find ${getLevelName(state.level + 1)}.</span>
+            <span style='color:var(--c-green)'>5. Find ${getLevelName(state.level + 1)}.</span><br>
+            <span style='color:var(--c-green)'>6. Pay off 1000 gold debt-</span> <span style='color:var(--c-white)'>(${state.player.gold >= 0 ? 'PAID!' : Math.abs(state.player.gold) + ' remaining'}).</span>
         `;
         qText.innerHTML = details;
     }
@@ -253,6 +271,7 @@ crtContainer.addEventListener('click', (e) => {
                 if (state.quest.secretsFound === state.quest.totalSecrets && state.quest.totalSecrets > 0) {
                     state.player.gold += 100;
                     extraMsg = " ALL SECRETS FOUND! +100G!";
+                    checkGoldDebt();
                 }
 
                 showMessage("You found a secret..." + extraMsg, { color: colors.cyan });

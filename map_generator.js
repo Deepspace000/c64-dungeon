@@ -124,7 +124,8 @@ export function generateMap(W, H) {
         for (let attempts = 0; attempts < 200; attempts++) {
             let x = Math.floor(Math.random() * (W - 2)) + 1;
             let y = Math.floor(Math.random() * (H - 2)) + 1;
-            if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
+            const distToPlayer = Math.abs(x - state.player.x) + Math.abs(y - state.player.y);
+            if (map[y][x] === 0 && distToPlayer >= 3) {
                 if (avoidLockedRoom && x <= roomEnd + 1 && y <= roomEnd + 1) continue;
                 let occupied = state.enemies.some(e => e.x === x && e.y === y) ||
                     state.items.some(i => i.x === x && i.y === y);
@@ -173,8 +174,8 @@ export function generateMap(W, H) {
         for (let i = 1; i <= 5; i++) spawnEnemy('Wraith', i);
     } else {
         // Level 4+: use BESTIARY, plus Wraiths as filler
-        let enemyPool = BESTIARY[state.level] || BESTIARY[4];
-        let numEnemies = 6 + Math.floor(state.level * 1.5);
+        let enemyPool = (BESTIARY[state.level] || BESTIARY[4]).filter(e => !e.isBoss);
+        let numEnemies = (state.level === 5) ? 16 : 6 + Math.floor(state.level * 1.5);
         for (let i = 0; i < numEnemies; i++) {
             let template = enemyPool[Math.floor(Math.random() * enemyPool.length)];
             let spot = getEmptySpot(true);
@@ -197,8 +198,8 @@ export function generateMap(W, H) {
         }
     }
 
-    // --- 8.5. PLACE GOLD KEY UNDER TOUGHEST ENEMY ---
-    if (state.enemies.length > 0) {
+    // --- 8.5. PLACE GOLD KEY UNDER TOUGHEST ENEMY (skip on boss levels - boss drops it) ---
+    if (!isBossLevel && state.enemies.length > 0) {
         let toughest = state.enemies.reduce((prev, curr) =>
             (prev.hp + prev.attack > curr.hp + curr.attack) ? prev : curr
         );
@@ -208,17 +209,20 @@ export function generateMap(W, H) {
     // --- 8.6. SPAWN BOSS / ELITE GUARD IN LOCKED ROOM ---
     if (isBossLevel) {
         let bossTemplate = (BESTIARY[state.level] || [{ name: "Unknown Abomination", hp: 100, attack: 25 }]);
+        // Use the last entry in the bestiary (the boss entry if it has isBoss flag)
         bossTemplate = bossTemplate[bossTemplate.length - 1];
         const bossY = Math.max(1, lockedRoomCenter.y - 1);
+        const bossType = bossTemplate.isBoss ? bossTemplate.name : 'Wraith';
         state.enemies.push({
             x: lockedRoomCenter.x, y: bossY,
-            hp: bossTemplate.hp * 2, maxHp: bossTemplate.hp * 2,
-            attack: bossTemplate.attack + 5,
-            type: 'Wraith',  // Use Wraith sprite for boss (has a fitting visual)
+            hp: bossTemplate.hp, maxHp: bossTemplate.hp,
+            attack: bossTemplate.attack,
+            type: bossType,
             level: state.level,
             state: 'idle',
             isBoss: true,
-            name: `BOSS: ${bossTemplate.name}`
+            name: bossTemplate.name,
+            dropsGoldKey: true
         });
     } else {
         const bossY = Math.max(1, lockedRoomCenter.y - 1);
@@ -249,15 +253,27 @@ export function generateMap(W, H) {
     });
 
     // Potions - use 'Health Potion' type (required by inventory system)
-    const numPotions = 2 + Math.floor(Math.random() * 3);
+    const numPotions = 4 + state.level;
     for (let i = 0; i < numPotions; i++) {
         let pSpot = getEmptySpot(true);
         if (pSpot) state.items.push({ x: pSpot.x, y: pSpot.y, type: 'Health Potion', name: 'Health Potion' });
     }
 
-    // Save Fountain (level 2+) - as an item, not a tile
+    // Save Fountain (level 2+) - place in open area (room)
     if (state.level >= 2) {
-        let fSpot = getEmptySpot(true);
+        let fSpot = null;
+        for (let attempts = 0; attempts < 300; attempts++) {
+            let spot = getEmptySpot(true);
+            if (!spot) continue;
+            // Check openness - count empty neighbors
+            let open = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (map[spot.y + dy] && map[spot.y + dy][spot.x + dx] === 0) open++;
+                }
+            }
+            if (open >= 6 || attempts > 250) { fSpot = spot; break; }
+        }
         if (fSpot) state.items.push({ x: fSpot.x, y: fSpot.y, type: 'fountain', name: 'Save Fountain', persistent: true });
     }
 
@@ -399,6 +415,41 @@ export function generateMap(W, H) {
                 speed: 0.2 + Math.random() * 0.8,
                 size: 8 + Math.random() * 24,
                 opacity: 0.05 + Math.random() * 0.15
+            });
+        }
+    }
+
+    // Level 4 - Drowning Catacombs: drips, puddles, blue mist
+    state.drips = [];
+    state.puddles = [];
+    if (state.level === 4) {
+        for (let i = 0; i < 30; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT * 0.5 + Math.random() * (GAME_HEIGHT * 0.5),
+                speed: 0.1 + Math.random() * 0.4,
+                size: 10 + Math.random() * 30,
+                opacity: 0.03 + Math.random() * 0.1
+            });
+        }
+        for (let i = 0; i < 12; i++) {
+            state.drips.push({
+                x: 20 + Math.random() * (GAME_WIDTH - 40),
+                y: Math.random() * (GAME_HEIGHT * 0.3),
+                speed: 1.0 + Math.random() * 2.0,
+                size: 2 + Math.random() * 3,
+                opacity: 0.4 + Math.random() * 0.5,
+                splashTimer: 0
+            });
+        }
+        for (let i = 0; i < 8; i++) {
+            state.puddles.push({
+                x: 30 + Math.random() * (GAME_WIDTH - 60),
+                y: GAME_HEIGHT * 0.7 + Math.random() * (GAME_HEIGHT * 0.25),
+                w: 12 + Math.random() * 30,
+                h: 3 + Math.random() * 5,
+                shimmer: Math.random() * Math.PI * 2,
+                opacity: 0.15 + Math.random() * 0.2
             });
         }
     }

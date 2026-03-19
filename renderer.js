@@ -186,7 +186,10 @@ function drawBricks(pts, isSide, isDoor, isLocked, isSecret) {
     } else if (state.level === 3) {
         mainColor = colors.darkgrey;
         sideColor = colors.black;
-    } else if (state.level > 3) {
+    } else if (state.level === 4) {
+        mainColor = colors.blue;
+        sideColor = colors.purple;
+    } else if (state.level > 4) {
         mainColor = colors.purple;
         sideColor = colors.darkgrey;
     }
@@ -234,7 +237,8 @@ function drawBricks(pts, isSide, isDoor, isLocked, isSecret) {
         let secretShade = '#a00000';
         if (state.level === 2) secretShade = '#00dd55';
         if (state.level === 3) secretShade = '#444444';
-        if (state.level > 3) secretShade = '#dd55dd';
+        if (state.level === 4) secretShade = '#3344aa';
+        if (state.level > 4) secretShade = '#dd55dd';
 
         drawPolygon([{ x: topLX, y: topLY }, { x: topRX, y: topRY }, { x: botRX, y: botRY }, { x: botLX, y: botLY }], secretShade, secretShade);
     }

@@ -7,6 +7,16 @@
 // Depends on: getCell from movement.js
 
 function bindControls() {
+    // Minimap zoom toggle
+    const mmCanvas = document.getElementById('minimap-canvas');
+    if (mmCanvas) {
+        mmCanvas.style.cursor = 'pointer';
+        mmCanvas.addEventListener('click', () => {
+            state.minimapZoomed = !state.minimapZoomed;
+            if (typeof render === 'function') render();
+        });
+    }
+
     function interactOrMove() {
         const d = DIRS[state.player.dir];
         const tx = state.player.x + d.dx;
@@ -32,6 +42,7 @@ function bindControls() {
                 if (state.quest.secretsFound === state.quest.totalSecrets && state.quest.totalSecrets > 0) {
                     state.player.gold += 100;
                     extraMsg = " ALL SECRETS FOUND! +100G!";
+                    checkGoldDebt();
                 }
 
                 showMessage("You found a secret..." + extraMsg, { color: colors.cyan });

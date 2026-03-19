@@ -7,7 +7,7 @@
     <title>The Deepest Depths</title>
     <!-- C64 Style Pixel Font -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=40">
 </head>
 
 <body>
@@ -31,7 +31,7 @@
                 </div>
             </div>
 
-            <div class="panel-section fixed-height quest-section flex-grow">
+            <div class="panel-section quest-section flex-grow">
                 <h2>QUESTS</h2>
                 <div id="quest-text">Destroy all creatures on level for reward.</div>
                 <div id="quest-progress">0/5 Slain</div>
@@ -111,6 +111,7 @@
                     <!-- Items go here -->
                 </ul>
             </div>
+            <button class="restart-level-btn" id="btn-restart-level">GOT STUCK? RESTART LEVEL</button>
         </div>
 
         <!-- Splash Screen Overlay -->
@@ -125,22 +126,32 @@
                 <button class="splash-btn" id="btn-settings">SETTINGS</button>
                 <button class="splash-btn" id="btn-info">INFO</button>
                 <button class="splash-btn" id="btn-exit">EXIT</button>
+            </div>
 
-                <!-- Dev Warp Buttons -->
-                <div class="dev-warp-section">
-                    <span class="dev-warp-heading">TEST WARP</span>
-                    <div id="dev-warp-container" class="dev-warp-grid">
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(1)">L1</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(2)">L2</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(3)">L3</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(4)">L4</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(5)">L5</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(6)">L6</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(7)">L7</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(8)">L8</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(9)">L9</button>
-                        <button class="splash-btn dev-btn" onclick="warpToLevel(10)">L10</button>
-                    </div>
+            <!-- Dev Warp Buttons - right side -->
+            <div class="dev-warp-section">
+                <span class="dev-warp-heading">TEST WARP</span>
+                <div id="dev-warp-container" class="dev-warp-grid">
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(1)">1</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(2)">2</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(3)">3</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(4)">4</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(5)">5</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(6)">6</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(7)">7</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(8)">8</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(9)">9</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(10)">10</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(11)">11</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(12)">12</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(13)">13</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(14)">14</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(15)">15</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(16)">16</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(17)">17</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(18)">18</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(19)">19</button>
+                    <button class="splash-btn dev-btn" onclick="warpToLevel(20)">20</button>
                 </div>
             </div>
             <!-- Info Screen -->
@@ -217,7 +228,7 @@
     <div id="tutorial-overlay" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;">
         <div id="tutorial-box" style="background:#000;border:4px solid #70a4b2;padding:30px;max-width:448px;width:90%;display:flex;flex-direction:column;gap:18px;font-family:'Press Start 2P',monospace;color:#70a4b2;box-sizing:border-box;">
             <h2>WELCOME, ADVENTURER</h2>
-            <p id="tutorial-text">Welcome to the Deepest Depths — a dungeon crawler with a difference: This is a game where you never gain levels, and have to use your smarts to defeat the denizens of the depths, find gold, weapons and potions. You need to reach the bottom of the depths to conquer the darkest overlord at level 20 — and each level features a different setting and monsters — The quests will guide you. Work out who to attack first and don't forget to equip your weapons!</p>
+            <p id="tutorial-text">Welcome to the Deepest Depths — a dungeon crawler debt collector game where you have been thrown into the depths so you can gather gold to pay off the money that you owe. This is a game where you never gain levels, but the monsters do, and have to use your smarts to defeat the denizens of the depths, find gold, weapons and potions. You need to reach the bottom of the depths to conquer the darkest overlord at level 20 and surface debt free! — Each level features a different environmental setting and monsters — The quests will guide you. Work out who to attack first and don't forget to equip your weapons! Get working to pay off that debt!</p>
             <label id="tutorial-no-show-label">
                 <input type="checkbox" id="tutorial-no-show"> Don't show this again
             </label>
@@ -226,15 +237,15 @@
     </div>
 
     <!-- game.js first: defines all globals (state, colors, ctx, audio, assets, constants) -->
-    <script src="game.js?v=27"></script>
+    <script src="game.js?v=40"></script>
     <!-- Module scripts: order doesn't matter as they only define functions -->
-    <script src="renderer.js?v=27"></script>
-    <script src="entities.js?v=27"></script>
-    <script src="effects.js?v=27"></script>
-    <script src="ui.js?v=27"></script>
-    <script src="combat.js?v=27"></script>
-    <script src="movement.js?v=27"></script>
-    <script src="input.js?v=27"></script>
+    <script src="renderer.js?v=40"></script>
+    <script src="entities.js?v=40"></script>
+    <script src="effects.js?v=40"></script>
+    <script src="ui.js?v=40"></script>
+    <script src="combat.js?v=40"></script>
+    <script src="movement.js?v=40"></script>
+    <script src="input.js?v=40"></script>
     <!-- Boot after all scripts loaded -->
     <script>
         if (document.readyState === 'loading') {

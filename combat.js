@@ -164,12 +164,19 @@ function attackFront() {
                         state.items.push({ x: e.x, y: e.y, type: 'Health Potion', name: 'Health Potion' });
                     }
 
+                    // Boss drops the gold key
+                    if (e.dropsGoldKey) {
+                        state.items.push({ x: e.x, y: e.y, type: 'key', name: 'Gold Key' });
+                        setTimeout(() => showMessage("THE BOSS DROPPED A GOLD KEY!"), 500);
+                    }
+
                     state.quest.slainEnemies++;
                     if (!state.quest.completed && state.quest.slainEnemies >= state.quest.totalEnemies) {
                         state.quest.completed = true;
                         state.player.gold += 50;
                         state.inventory.push('Super Potion');
                         setTimeout(() => showMessage("QUEST COMPLETE! +50G +SUPER POTION"), 1000);
+                        checkGoldDebt();
                     }
 
                     updateUIState();
