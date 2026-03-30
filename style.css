@@ -209,9 +209,14 @@
     .panel-section {
         background-color: var(--c-black);
         border: 2px solid var(--c-white);
-        padding: 10px;
+        padding: 8px;
         display: flex;
         flex-direction: column;
+    }
+
+    #minimap-panel {
+        padding: 8px;
+        align-items: center;
     }
 
     .fixed-height {
@@ -262,11 +267,24 @@
         margin-top: 20px;
     }
 
+    #col-center {
+        flex: 1 1 0;
+        min-height: 0;
+        align-self: stretch;
+        overflow-y: visible;
+    }
+
     .quest-section {
         border-color: var(--c-yellow);
-        flex: 1 1 auto !important;
-        min-height: 200px;
-        overflow-y: auto;
+        flex: 0 0 auto;
+        overflow-y: visible;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .quest-section #quest-text {
+        flex: 0 0 auto;
+        overflow-y: visible;
     }
 
     .section-inventory {
@@ -275,11 +293,11 @@
 
     #quest-text {
         font-size: 8px;
-        line-height: 1.4;
+        line-height: 2.2;
         color: var(--c-white);
         margin-bottom: 0;
-        overflow-y: auto;
-        flex: 1 1 0px;
+        overflow-y: visible;
+        padding: 5px 0;
     }
 
     #quest-progress {
@@ -394,14 +412,23 @@
     #minimap-panel {
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
     }
 
     #minimap-container {
-        width: 124px;
-        height: 124px;
+        display: inline-block;
         background-color: var(--c-black);
         border: 2px solid var(--c-white);
         image-rendering: pixelated;
+        line-height: 0;
+    }
+
+    /* On shorter screens, shrink the minimap to leave room for quests */
+    @media (max-height: 700px) {
+        #minimap-canvas {
+            width: 124px;
+            height: 124px;
+        }
     }
 
     .controls-wrap {
@@ -412,8 +439,8 @@
     }
 
     #col-left {
-        width: 180px;
-        min-width: 180px;
+        width: 210px;
+        min-width: 210px;
     }
 
     #col-game {
@@ -970,6 +997,124 @@
 #tutorial-close-btn {
     width: 100%;
     font-size: 12px;
+}
+
+/* Depths Map Overlay */
+#depths-map-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+#depths-map-box {
+    text-align: center;
+    font-family: 'Press Start 2P', monospace;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+#depths-map-canvas {
+    image-rendering: pixelated;
+    border: 2px solid var(--c-grey);
+}
+
+/* Load Game Dialog */
+#load-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#load-box {
+    background: var(--c-black);
+    border: 4px solid var(--c-cyan);
+    padding: 25px 30px;
+    text-align: center;
+    font-family: 'Press Start 2P', monospace;
+    min-width: 320px;
+}
+
+.load-save-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: var(--c-darkgrey);
+    border: 1px solid var(--c-grey);
+    cursor: pointer;
+    font-size: 7px;
+    color: var(--c-white);
+    text-align: left;
+}
+
+.load-save-entry:hover {
+    border-color: var(--c-yellow);
+    background: #222;
+}
+
+.load-save-name {
+    color: var(--c-yellow);
+    font-size: 8px;
+}
+
+.load-save-info {
+    color: var(--c-lightgrey);
+    font-size: 6px;
+}
+
+/* Save Name Dialog */
+#save-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#save-box {
+    background: var(--c-black);
+    border: 4px solid var(--c-green);
+    padding: 25px 35px;
+    text-align: center;
+    font-family: 'Press Start 2P', monospace;
+}
+
+/* In-game Confirm Dialog */
+#confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#confirm-box {
+    background: var(--c-black);
+    border: 4px solid var(--c-red);
+    padding: 25px 35px;
+    text-align: center;
+    font-family: 'Press Start 2P', monospace;
+}
+
+#confirm-text {
+    color: var(--c-white);
+    font-size: 12px;
+    line-height: 1.8;
+    margin: 0;
 }
 
 /* Dev Warp Buttons - right side panel on splash */

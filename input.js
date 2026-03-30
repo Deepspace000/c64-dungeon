@@ -76,6 +76,56 @@ function bindControls() {
             return;
         }
 
+        // M — Depths Map
+        if (e.code === 'KeyM') {
+            e.preventDefault();
+            const overlay = document.getElementById('depths-map-overlay');
+            if (overlay.classList.contains('hidden')) {
+                state._depthsMapOpened = false; // Re-center on current level
+                drawDepthsMap();
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+            return;
+        }
+
+        // F5 Quicksave
+        if (e.code === 'F5') {
+            e.preventDefault();
+            if (state.appState === 'playing' || state.appState === 'low_health') {
+                saveGame('Quicksave');
+                showMessage("QUICKSAVE!");
+                if (audioCtx) playSound('powerup');
+            }
+            return;
+        }
+
+        // F7 Quickload (most recent save)
+        if (e.code === 'F7') {
+            e.preventDefault();
+            const save = loadMostRecentSave();
+            if (save) {
+                const d = new Date(save.date);
+                const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                showConfirm(`Load "${save.name}"?\nLevel ${save.state.level} - ${dateStr}`, () => {
+                    try {
+                        Object.assign(state, save.state);
+                        state.appState = 'playing';
+                        document.getElementById('splash-screen').style.display = 'none';
+                        render();
+                        updateUIState();
+                        showMessage("GAME LOADED!");
+                    } catch (err) {
+                        showConfirm("Failed to load save!", () => {});
+                    }
+                });
+            } else {
+                showConfirm("No save found!", () => {});
+            }
+            return;
+        }
+
         if (state.appState === 'intro') {
             document.getElementById('intro-screen').classList.add('hidden');
             state.appState = 'playing';

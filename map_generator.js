@@ -245,19 +245,15 @@ export function generateMap(W, H) {
         type: 'weapon', name: floorWep.name, attackBonus: floorWep.attackBonus
     });
 
-    let armSpot = getEmptySpot(true);
+    // Armor placed in the mystery room next to weapon
     let floorArm = LEVEL_ARMOR[state.level - 1] || LEVEL_ARMOR[0];
-    if (armSpot) state.items.push({
-        x: armSpot.x, y: armSpot.y,
+    state.items.push({
+        x: Math.max(1, lockedRoomCenter.x - 1),
+        y: lockedRoomCenter.y,
         type: 'armor', name: floorArm.name, defenseBonus: floorArm.defenseBonus
     });
 
-    // Potions - use 'Health Potion' type (required by inventory system)
-    const numPotions = 4 + state.level;
-    for (let i = 0; i < numPotions; i++) {
-        let pSpot = getEmptySpot(true);
-        if (pSpot) state.items.push({ x: pSpot.x, y: pSpot.y, type: 'Health Potion', name: 'Health Potion' });
-    }
+    // Potions only come from secret walls, monster drops, and chests — no floor spawns
 
     // Save Fountain (level 2+) - place in open area (room)
     if (state.level >= 2) {
@@ -351,7 +347,7 @@ export function generateMap(W, H) {
             if (map[y][x] === 1) wallCoords.push({ x, y });
         }
     }
-    let targetSecrets = Math.floor(wallCoords.length * 0.04);
+    let targetSecrets = 5 + (state.level - 1);
     for (let i = wallCoords.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [wallCoords[i], wallCoords[j]] = [wallCoords[j], wallCoords[i]];
@@ -450,6 +446,94 @@ export function generateMap(W, H) {
                 h: 3 + Math.random() * 5,
                 shimmer: Math.random() * Math.PI * 2,
                 opacity: 0.15 + Math.random() * 0.2
+            });
+        }
+    }
+
+    // Level 5 - The Forgotten Crypt: dark brown/orange mist
+    if (state.level === 5) {
+        for (let i = 0; i < 45; i++) {
+            state.mistParticles.push({
+                x: Math.random() * 400,
+                y: 60 + Math.random() * 210,
+                speed: 0.3 + Math.random() * 1.0,
+                size: 12 + Math.random() * 28,
+                opacity: 0.06 + Math.random() * 0.1
+            });
+        }
+    }
+
+    // Level 10 - The Abyssal Throne: dark red mist
+    if (state.level === 10) {
+        for (let i = 0; i < 35; i++) {
+            state.mistParticles.push({
+                x: Math.random() * 400,
+                y: 60 + Math.random() * 210,
+                speed: 0.15 + Math.random() * 0.5,
+                size: 12 + Math.random() * 25,
+                opacity: 0.04 + Math.random() * 0.08
+            });
+        }
+    }
+
+    // Level 9 - Chasm of Echoes: windy brown mist
+    if (state.level === 9) {
+        for (let i = 0; i < 45; i++) {
+            state.mistParticles.push({
+                x: Math.random() * 400,
+                y: 30 + Math.random() * 240,
+                speed: 0.8 + Math.random() * 2.0,
+                size: 8 + Math.random() * 20,
+                opacity: 0.04 + Math.random() * 0.08
+            });
+        }
+    }
+
+    // Level 8 - The Obsidian Labyrinth: purple mist
+    if (state.level === 8) {
+        for (let i = 0; i < 35; i++) {
+            state.mistParticles.push({
+                x: Math.random() * 400,
+                y: 60 + Math.random() * 210,
+                speed: 0.2 + Math.random() * 0.7,
+                size: 10 + Math.random() * 20,
+                opacity: 0.05 + Math.random() * 0.08
+            });
+        }
+    }
+
+    // Level 7 - The Sunken Library: damp mist + drips
+    if (state.level === 7) {
+        for (let i = 0; i < 8; i++) {
+            state.drips.push({
+                x: 20 + Math.random() * (380),
+                y: Math.random() * 60,
+                speed: 0.8 + Math.random() * 1.5,
+                size: 1.5 + Math.random() * 2,
+                opacity: 0.3 + Math.random() * 0.4,
+                splashTimer: 0
+            });
+        }
+        for (let i = 0; i < 40; i++) {
+            state.mistParticles.push({
+                x: Math.random() * 400,
+                y: 45 + Math.random() * 210,
+                speed: 0.3 + Math.random() * 0.9,
+                size: 10 + Math.random() * 22,
+                opacity: 0.05 + Math.random() * 0.1
+            });
+        }
+    }
+
+    // Level 6 - Halls of the Blind Warden: mist + dust
+    if (state.level === 6) {
+        for (let i = 0; i < 50; i++) {
+            state.mistParticles.push({
+                x: Math.random() * 400,
+                y: 45 + Math.random() * 225,
+                speed: 0.4 + Math.random() * 1.2,
+                size: 10 + Math.random() * 25,
+                opacity: 0.06 + Math.random() * 0.12
             });
         }
     }

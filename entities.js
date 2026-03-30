@@ -20,6 +20,14 @@ function renderEnemy(x, z, enemy) {
         h = origH * 0.55;
     } else if (enemy.type === 'Mimic Chest') {
         w = h * 1.0;
+    } else if (enemy.type === 'Gargoyle') {
+        w = h * 1.2;
+    } else if (enemy.type === 'Ink Elemental') {
+        w = h * 0.9;
+    } else if (enemy.type === 'Obsidian Golem') {
+        w = h * 0.7;
+    } else if (enemy.type === 'Chasm Crawler') {
+        w = h * 1.5;
     }
 
     // Bosses are rendered 2x bigger and wider
@@ -50,16 +58,16 @@ function renderEnemy(x, z, enemy) {
         'Giant Rat':         { img: giantRatImg,         loaded: giantRatLoaded },
         'Crypt Bat':         { img: wraithImg,           loaded: wraithLoaded,    filter: 'brightness(0.4) sepia(1) hue-rotate(10deg)' },
         'Restless Zombie':   { img: restlessZombieImg,   loaded: restlessZombieLoaded },
-        'Gargoyle':          { img: ghoulImg,            loaded: ghoulLoaded,     filter: 'brightness(0.5) grayscale(1)' },
+        'Gargoyle':          { img: gargoyleImg,         loaded: gargoyleLoaded },
         'Blind Warden':      { img: blindWardenImg,      loaded: blindWardenLoaded },
-        'Ink Elemental':     { img: wraithImg,           loaded: wraithLoaded,    filter: 'hue-rotate(240deg) brightness(0.6) saturate(3)' },
+        'Ink Elemental':     { img: inkElementalImg,     loaded: inkElementalLoaded },
         'Ghostly Scribe':    { img: ghostlyScribeImg,    loaded: ghostlyScribeLoaded },
         'Minotaur':          { img: minotaurImg,         loaded: minotaurLoaded },
-        'Obsidian Golem':    { img: skeletonImg,         loaded: skeletonLoaded,  filter: 'brightness(0.2) contrast(2) grayscale(1)' },
-        'Chasm Crawler':     { img: spiderImg,           loaded: spiderLoaded,    filter: 'brightness(0.3) hue-rotate(270deg) saturate(2)' },
+        'Obsidian Golem':    { img: obsidianGolemImg,    loaded: obsidianGolemLoaded },
+        'Chasm Crawler':     { img: chasmCrawlerImg,     loaded: chasmCrawlerLoaded },
         'Echo Wraith':       { img: echoWraithImg,       loaded: echoWraithLoaded },
         'Abyssal Knight':    { img: abyssalKnightImg,    loaded: abyssalKnightLoaded },
-        'Throne Guard':      { img: skeletonImg,         loaded: skeletonLoaded,  filter: 'sepia(1) hue-rotate(30deg) brightness(1.3) saturate(3)' },
+        'Throne Guard':      { img: throneGuardImg,      loaded: throneGuardLoaded },
         'Deep Dweller':      { img: deepDwellerImg,      loaded: deepDwellerLoaded },
         'Ruined Sentinel':   { img: skeletonImg,         loaded: skeletonLoaded,  filter: 'brightness(0.5) sepia(1) saturate(0.5)' },
         'Undead King':       { img: undeadKingImg,       loaded: undeadKingLoaded },
@@ -78,6 +86,7 @@ function renderEnemy(x, z, enemy) {
         'Null Entity':       { img: wraithImg,           loaded: wraithLoaded,    filter: 'invert(1) brightness(0.5)' },
         'The Depth Core':    { img: depthCoreImg,        loaded: depthCoreLoaded },
         'Skrronzor the Level Boss': { img: skeletonImg, loaded: skeletonLoaded, filter: 'brightness(1.2) sepia(0.5) hue-rotate(340deg) saturate(2)' },
+        'Abyssius, Lord of the Abyss': { img: abyssiusImg, loaded: abyssiusLoaded },
     };
 
     let imgToDraw = skeletonImg;

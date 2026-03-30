@@ -501,7 +501,7 @@ const LEVEL_ARMOR = [
 const BESTIARY = {
     3: [{ name: "Mimic Chest", hp: 25, attack: 12 }],
     4: [{ name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }],
-    5: [{ name: "Mimic Chest", hp: 25, attack: 12 }, { name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }, { name: "Crypt Bat", hp: 20, attack: 15 }, { name: "Restless Zombie", hp: 30, attack: 12 }, { name: "Skrronzor the Level Boss", hp: 120, attack: 30, isBoss: true }],
+    5: [{ name: "Mimic Chest", hp: 25, attack: 12 }, { name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }, { name: "Wraith", hp: 20, attack: 15 }, { name: "Restless Zombie", hp: 30, attack: 12 }, { name: "Skrronzor the Level Boss", hp: 120, attack: 30, isBoss: true }],
     6: [{ name: "Gargoyle", hp: 40, attack: 18 }, { name: "Blind Warden", hp: 50, attack: 22 }],
     7: [{ name: "Ink Elemental", hp: 50, attack: 22 }, { name: "Ghostly Scribe", hp: 35, attack: 28 }],
     8: [{ name: "Minotaur", hp: 70, attack: 28 }, { name: "Obsidian Golem", hp: 90, attack: 24 }],
@@ -539,7 +539,7 @@ const state = {
     map: [],
     enemies: [],
     items: [],
-    inventory: ['Rusty Sword', 'Health Potion', 'Rusty Armor'],
+    inventory: ['Rusty Sword', 'Health Potion'],
     hands: { left: null, right: null },
     armorSlot: null,
     animations: [],
@@ -606,19 +606,37 @@ const restlessZombieImg = new Image(); let restlessZombieLoaded = false;
 restlessZombieImg.onload = () => { restlessZombieLoaded = true; }; restlessZombieImg.src = "restless_zombie.png?v=2";
 
 const blindWardenImg = new Image(); let blindWardenLoaded = false;
-blindWardenImg.onload = () => { blindWardenLoaded = true; }; blindWardenImg.src = "blind_warden.png?v=2";
+blindWardenImg.onload = () => { blindWardenLoaded = true; }; blindWardenImg.src = "blind_warden.png?v=3";
+
+const gargoyleImg = new Image(); let gargoyleLoaded = false;
+gargoyleImg.onload = () => { gargoyleLoaded = true; }; gargoyleImg.src = "gargoyle_asset.png?v=1";
 
 const ghostlyScribeImg = new Image(); let ghostlyScribeLoaded = false;
-ghostlyScribeImg.onload = () => { ghostlyScribeLoaded = true; }; ghostlyScribeImg.src = "ghostly_scribe.png?v=2";
+ghostlyScribeImg.onload = () => { ghostlyScribeLoaded = true; }; ghostlyScribeImg.src = "ghostly_scribe.png?v=3";
+
+const inkElementalImg = new Image(); let inkElementalLoaded = false;
+inkElementalImg.onload = () => { inkElementalLoaded = true; }; inkElementalImg.src = "ink_elemental.png?v=1";
 
 const echoWraithImg = new Image(); let echoWraithLoaded = false;
-echoWraithImg.onload = () => { echoWraithLoaded = true; }; echoWraithImg.src = "echo_wraith.png?v=2";
+echoWraithImg.onload = () => { echoWraithLoaded = true; }; echoWraithImg.src = "echo_wraith.png?v=3";
+
+const chasmCrawlerImg = new Image(); let chasmCrawlerLoaded = false;
+chasmCrawlerImg.onload = () => { chasmCrawlerLoaded = true; }; chasmCrawlerImg.src = "chasm_crawler.png?v=1";
 
 const minotaurImg = new Image(); let minotaurLoaded = false;
 minotaurImg.onload = () => { minotaurLoaded = true; }; minotaurImg.src = "minotaur.png?v=2";
 
+const obsidianGolemImg = new Image(); let obsidianGolemLoaded = false;
+obsidianGolemImg.onload = () => { obsidianGolemLoaded = true; }; obsidianGolemImg.src = "obsidian_golem.png?v=1";
+
 const abyssalKnightImg = new Image(); let abyssalKnightLoaded = false;
 abyssalKnightImg.onload = () => { abyssalKnightLoaded = true; }; abyssalKnightImg.src = "abyssal_knight.png?v=2";
+
+const throneGuardImg = new Image(); let throneGuardLoaded = false;
+throneGuardImg.onload = () => { throneGuardLoaded = true; }; throneGuardImg.src = "throne_guard.png?v=1";
+
+const abyssiusImg = new Image(); let abyssiusLoaded = false;
+abyssiusImg.onload = () => { abyssiusLoaded = true; }; abyssiusImg.src = "abyssius.png?v=1";
 
 const deepDwellerImg = new Image(); let deepDwellerLoaded = false;
 deepDwellerImg.onload = () => { deepDwellerLoaded = true; }; deepDwellerImg.src = "deep_dweller.png?v=2";
@@ -826,12 +844,13 @@ function generateMap(W, H) {
         2: ['Skeleton', 'Skeleton', 'Wraith'],
         3: ['Cloaked Skeleton', 'Mimic Chest', 'Cloaked Skeleton'],
         4: ['Cave Slime', 'Giant Rat', 'Cave Slime', 'Giant Rat'],
-        5: ['Skeleton', 'Wraith', 'Cloaked Skeleton', 'Mimic Chest', 'Cave Slime', 'Giant Rat', 'Crypt Bat', 'Restless Zombie'],
+        5: ['Skeleton', 'Wraith', 'Cloaked Skeleton', 'Mimic Chest', 'Cave Slime', 'Giant Rat', 'Wraith', 'Restless Zombie'],
         6: ['Gargoyle', 'Blind Warden', 'Gargoyle'],
         7: ['Ink Elemental', 'Ghostly Scribe', 'Ink Elemental'],
         8: ['Minotaur', 'Obsidian Golem'],
-        9: ['Chasm Crawler', 'Echo Wraith', 'Chasm Crawler'],
+        9: ['Chasm Crawler', 'Echo Wraith'],
         10: ['Abyssal Knight', 'Throne Guard'],
+
         11: ['Deep Dweller'],
         12: ['Ruined Sentinel', 'Undead King'],
         13: ['Bloodbat', 'Bloodstone Golem', 'Bloodbat'],
@@ -850,9 +869,33 @@ function generateMap(W, H) {
         for (let skLvl = 1; skLvl <= 5; skLvl++) {
             if (trySpawnEnemy('Skeleton', skLvl)) spawned++;
         }
+    } else if (state.level >= 6) {
+        // Spawn 5 of each unique enemy type for this level (levels 1-5)
+        const pool = levelEnemyPools[state.level] || levelEnemyPools[3];
+        const uniqueTypes = [...new Set(pool)];
+        for (const type of uniqueTypes) {
+            for (let lvl = 1; lvl <= 5; lvl++) {
+                if (trySpawnEnemy(type, lvl)) spawned++;
+            }
+        }
+        // Plus some random previous monsters
+        const allPrevTypes = [];
+        for (let l = 2; l < state.level; l++) {
+            if (levelEnemyPools[l]) {
+                for (const t of levelEnemyPools[l]) allPrevTypes.push(t);
+            }
+        }
+        if (allPrevTypes.length > 0) {
+            const numExtra = 2 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < numExtra; i++) {
+                const type = allPrevTypes[Math.floor(Math.random() * allPrevTypes.length)];
+                const lvl = 1 + Math.floor(Math.random() * 5);
+                if (trySpawnEnemy(type, lvl)) spawned++;
+            }
+        }
     } else {
         const pool = levelEnemyPools[state.level] || levelEnemyPools[3];
-        const numEnemies = (state.level === 5) ? 10 + Math.floor(Math.random() * 4) : 4 + Math.floor(Math.random() * 3);
+        const numEnemies = 4 + Math.floor(Math.random() * 3);
         for (let i = 0; i < numEnemies; i++) {
             const type = pool[Math.floor(Math.random() * pool.length)];
             const lvl = 1 + Math.floor(Math.random() * Math.min(state.level, 5));
@@ -932,19 +975,7 @@ function generateMap(W, H) {
         }
     }
 
-    // Place potions: 5 on level 1, +1 per level
-    const numPotions = 4 + state.level;
-    for (let i = 0; i < numPotions; i++) {
-        for (let att = 0; att < 50; att++) {
-            let x = Math.floor(Math.random() * (W - 2)) + 1;
-            let y = Math.floor(Math.random() * (H - 2)) + 1;
-            if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y) &&
-                !state.items.some(it => it.x === x && it.y === y)) {
-                state.items.push({ x, y, type: 'Health Potion', name: 'Health Potion' });
-                break;
-            }
-        }
-    }
+    // Potions only come from secret walls, monster drops, and chests — no floor spawns
 
     if (state.level >= 2) {
         const floorPool = levelEnemyPools[state.level] || levelEnemyPools[3];
@@ -1015,6 +1046,8 @@ function generateMap(W, H) {
         if (roomsCarved === 0) {
             const weapon = LEVEL_WEAPONS[Math.min(state.level - 1, LEVEL_WEAPONS.length - 1)];
             state.items.push({ x: a.centerRoomX, y: a.centerRoomY, type: 'weapon', name: weapon.name, attackBonus: weapon.attackBonus });
+            const armorData = LEVEL_ARMOR[Math.min(state.level - 1, LEVEL_ARMOR.length - 1)];
+            state.items.push({ x: a.centerRoomX + 1, y: a.centerRoomY, type: 'armor', name: armorData.name, defenseBonus: armorData.defenseBonus });
         } else {
             state.items.push({ x: a.centerRoomX, y: a.centerRoomY, type: 'Black Key', name: 'Black Key' });
             if (state.level === 3) {
@@ -1065,23 +1098,7 @@ function generateMap(W, H) {
         }
     }
 
-    // Armor
-    if (Math.random() < 0.5 && typeof LEVEL_ARMOR !== 'undefined') {
-        let placedArmor = false;
-        let attemptsArmor = 0;
-        const armorData = LEVEL_ARMOR[Math.min(state.level - 1, LEVEL_ARMOR.length - 1)];
-        while (!placedArmor && attemptsArmor < 100) {
-            let x = Math.floor(Math.random() * (W - 2)) + 1;
-            let y = Math.floor(Math.random() * (H - 2)) + 1;
-            if (map[y][x] === 0 && (x !== state.player.x || y !== state.player.y)) {
-                if (!state.items.find(i => i.x === x && i.y === y)) {
-                    state.items.push({ x, y, type: 'armor', name: armorData.name });
-                    placedArmor = true;
-                }
-            }
-            attemptsArmor++;
-        }
-    }
+    // Armor only drops in mystery rooms (placed alongside weapon above)
 
     // Spikes
     const numSpikes = Math.floor(Math.random() * 5) + 1;
@@ -1124,7 +1141,7 @@ function generateMap(W, H) {
         }
     }
 
-    let targetSecrets = 9 + state.level;
+    let targetSecrets = 5 + (state.level - 1);
     for (let i = wallCoords.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [wallCoords[i], wallCoords[j]] = [wallCoords[j], wallCoords[i]];
@@ -1205,6 +1222,94 @@ function generateMap(W, H) {
         }
     }
 
+    // Level 5 - The Forgotten Crypt: dark brown/orange mist
+    if (state.level === 5) {
+        for (let i = 0; i < 45; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT * 0.2 + Math.random() * (GAME_HEIGHT * 0.7),
+                speed: 0.3 + Math.random() * 1.0,
+                size: 12 + Math.random() * 28,
+                opacity: 0.06 + Math.random() * 0.1
+            });
+        }
+    }
+
+    // Level 10 - The Abyssal Throne: dark red mist
+    if (state.level === 10) {
+        for (let i = 0; i < 35; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT * 0.2 + Math.random() * (GAME_HEIGHT * 0.7),
+                speed: 0.15 + Math.random() * 0.5,
+                size: 12 + Math.random() * 25,
+                opacity: 0.04 + Math.random() * 0.08
+            });
+        }
+    }
+
+    // Level 9 - Chasm of Echoes: windy brown mist
+    if (state.level === 9) {
+        for (let i = 0; i < 45; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT * 0.1 + Math.random() * (GAME_HEIGHT * 0.8),
+                speed: 0.8 + Math.random() * 2.0,
+                size: 8 + Math.random() * 20,
+                opacity: 0.04 + Math.random() * 0.08
+            });
+        }
+    }
+
+    // Level 8 - The Obsidian Labyrinth: purple mist
+    if (state.level === 8) {
+        for (let i = 0; i < 35; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT * 0.2 + Math.random() * (GAME_HEIGHT * 0.7),
+                speed: 0.2 + Math.random() * 0.7,
+                size: 10 + Math.random() * 20,
+                opacity: 0.05 + Math.random() * 0.08
+            });
+        }
+    }
+
+    // Level 7 - The Sunken Library: damp mist + drips
+    if (state.level === 7) {
+        for (let i = 0; i < 8; i++) {
+            state.drips.push({
+                x: 20 + Math.random() * (GAME_WIDTH - 40),
+                y: Math.random() * (GAME_HEIGHT * 0.2),
+                speed: 0.8 + Math.random() * 1.5,
+                size: 1.5 + Math.random() * 2,
+                opacity: 0.3 + Math.random() * 0.4,
+                splashTimer: 0
+            });
+        }
+        for (let i = 0; i < 40; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT * 0.15 + Math.random() * (GAME_HEIGHT * 0.7),
+                speed: 0.3 + Math.random() * 0.9,
+                size: 10 + Math.random() * 22,
+                opacity: 0.05 + Math.random() * 0.1
+            });
+        }
+    }
+
+    // Level 6 - Halls of the Blind Warden: mist + dust particles
+    if (state.level === 6) {
+        for (let i = 0; i < 50; i++) {
+            state.mistParticles.push({
+                x: Math.random() * GAME_WIDTH,
+                y: GAME_HEIGHT * 0.15 + Math.random() * (GAME_HEIGHT * 0.75),
+                speed: 0.4 + Math.random() * 1.2,
+                size: 10 + Math.random() * 25,
+                opacity: 0.06 + Math.random() * 0.12
+            });
+        }
+    }
+
     // Torches for level 3
     if (state.level === 3) {
         for (let y = 1; y < H - 1; y++) {
@@ -1248,7 +1353,9 @@ function gameLoop() {
         }
     }
 
-    if (needsRender) render();
+    // Always render on levels with ambient effects (mist, particles, drips)
+    const hasAmbientEffects = state.level >= 4;
+    if (needsRender || hasAmbientEffects) render();
     requestAnimationFrame(gameLoop);
 }
 
@@ -1260,6 +1367,111 @@ function init() {
     updateUIState();
 
     const btnStart = document.getElementById('btn-start');
+    // In-game confirm dialog
+    const confirmOverlay = document.getElementById('confirm-overlay');
+    const confirmText = document.getElementById('confirm-text');
+    const confirmYes = document.getElementById('confirm-yes');
+    const confirmNo = document.getElementById('confirm-no');
+    let confirmCallback = null;
+
+    window.showConfirm = function(message, onYes) {
+        confirmText.innerText = message;
+        confirmOverlay.classList.remove('hidden');
+        confirmCallback = onYes;
+    };
+
+    confirmYes.addEventListener('click', () => {
+        confirmOverlay.classList.add('hidden');
+        if (confirmCallback) confirmCallback();
+        confirmCallback = null;
+    });
+
+    confirmNo.addEventListener('click', () => {
+        confirmOverlay.classList.add('hidden');
+        confirmCallback = null;
+    });
+
+    // Save game with name input
+    const saveOverlay = document.getElementById('save-overlay');
+    const saveNameInput = document.getElementById('save-name-input');
+    const saveConfirmBtn = document.getElementById('save-confirm');
+    const saveCancelBtn = document.getElementById('save-cancel');
+
+    window.saveGame = function(name) {
+        const saveData = {
+            name: name || 'Unnamed Save',
+            date: new Date().toISOString(),
+            level: state.level,
+            state: JSON.parse(JSON.stringify(state))
+        };
+        let saves = JSON.parse(localStorage.getItem('c64_dungeon_saves') || '[]');
+        saves.push(saveData);
+        // Sort newest first, keep only 5
+        saves.sort((a, b) => new Date(b.date) - new Date(a.date));
+        if (saves.length > 5) saves = saves.slice(0, 5);
+        localStorage.setItem('c64_dungeon_saves', JSON.stringify(saves));
+        localStorage.setItem('c64_dungeon_save_v2', JSON.stringify(state));
+    };
+
+    window.loadMostRecentSave = function() {
+        // Try named saves first, fall back to quicksave
+        let saves = JSON.parse(localStorage.getItem('c64_dungeon_saves') || '[]');
+        if (saves.length > 0) {
+            // Sort by date descending
+            saves.sort((a, b) => new Date(b.date) - new Date(a.date));
+            return saves[0];
+        }
+        const qs = localStorage.getItem('c64_dungeon_save_v2');
+        if (qs) {
+            return { name: 'Quicksave', date: new Date().toISOString(), state: JSON.parse(qs) };
+        }
+        return null;
+    };
+
+    const btnSave = document.getElementById('btn-save');
+    if (btnSave) {
+        btnSave.addEventListener('click', () => {
+            if (state.appState !== 'playing' && state.appState !== 'menu' && state.appState !== 'low_health') return;
+            saveNameInput.value = '';
+            saveOverlay.classList.remove('hidden');
+            saveNameInput.focus();
+        });
+    }
+
+    saveConfirmBtn.addEventListener('click', () => {
+        const name = saveNameInput.value.trim() || 'Unnamed Save';
+        saveGame(name);
+        saveOverlay.classList.add('hidden');
+        showConfirm(`Game saved as "${name}"!`, () => {});
+    });
+
+    saveNameInput.addEventListener('keydown', (e) => {
+        e.stopPropagation(); // Prevent game controls while typing
+        if (e.code === 'Enter') saveConfirmBtn.click();
+        if (e.code === 'Escape') saveCancelBtn.click();
+    });
+
+    saveCancelBtn.addEventListener('click', () => {
+        saveOverlay.classList.add('hidden');
+    });
+
+    // Depths map close on click
+    const depthsMapOverlay = document.getElementById('depths-map-overlay');
+    if (depthsMapOverlay) {
+        depthsMapOverlay.addEventListener('click', () => {
+            depthsMapOverlay.classList.add('hidden');
+        });
+    }
+
+    const btnExit = document.getElementById('btn-exit');
+    if (btnExit) {
+        btnExit.addEventListener('click', () => {
+            showConfirm('Are you sure you want to exit? All unsaved progress will be lost.', () => {
+                location.reload();
+            });
+        });
+    }
+
     const btnLoad = document.getElementById('btn-load');
     const splashScreen = document.getElementById('splash-screen');
     const introScreen = document.getElementById('intro-screen');
@@ -1335,13 +1547,15 @@ function init() {
         genModeSelect.addEventListener('change', (e) => { state.settings.generationMode = e.target.value; });
     }
 
-    if (screenSizeSelect) {
+    const btnApplySettings = document.getElementById('btn-apply-settings');
+    if (btnApplySettings && screenSizeSelect) {
         const appContainer = document.querySelector('.app-container');
-        screenSizeSelect.addEventListener('change', (e) => {
+        btnApplySettings.addEventListener('click', () => {
             if (appContainer) {
                 appContainer.classList.remove('scale-1x', 'scale-2x', 'scale-3x');
-                appContainer.classList.add(`scale-${e.target.value}`);
+                appContainer.classList.add(`scale-${screenSizeSelect.value}`);
             }
+            settingsOverlay.classList.add('hidden');
         });
     }
 
@@ -1361,28 +1575,76 @@ function init() {
         });
     }
 
-    if (btnLoad) {
-        btnLoad.addEventListener('click', () => {
-            const savedStateStr = localStorage.getItem('c64_dungeon_save_v2');
-            if (savedStateStr) {
-                try {
-                    const savedState = JSON.parse(savedStateStr);
-                    Object.assign(state, savedState);
-                    splashScreen.style.display = 'none';
-                    state.appState = 'playing';
-                    initAudio();
-                    playGameMusic();
-                    render();
-                    updateUIState();
-                    showMessage("GAME LOADED.");
-                } catch (e) {
-                    console.error("Failed to parse save", e);
-                }
-            } else {
-                alert("No save found!");
-            }
-        });
+    const loadOverlay = document.getElementById('load-overlay');
+    const loadSaveList = document.getElementById('load-save-list');
+    const loadCancelBtn = document.getElementById('load-cancel');
+
+    function loadSaveState(saveData) {
+        try {
+            Object.assign(state, saveData.state);
+            splashScreen.style.display = 'none';
+            loadOverlay.classList.add('hidden');
+            state.appState = 'playing';
+            initAudio();
+            playGameMusic();
+            render();
+            updateUIState();
+            showMessage("GAME LOADED.");
+        } catch (e) {
+            console.error("Failed to load save", e);
+        }
     }
+
+    function showLoadScreen() {
+        let saves = JSON.parse(localStorage.getItem('c64_dungeon_saves') || '[]');
+        // Also check for legacy quicksave
+        const qs = localStorage.getItem('c64_dungeon_save_v2');
+        if (saves.length === 0 && !qs) {
+            showConfirm("No saves found!", () => {});
+            return;
+        }
+        saves.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        loadSaveList.innerHTML = '';
+        if (saves.length === 0 && qs) {
+            // Legacy quicksave only
+            const entry = document.createElement('div');
+            entry.className = 'load-save-entry';
+            entry.innerHTML = '<div><span class="load-save-name">Quicksave (Legacy)</span></div>';
+            entry.addEventListener('click', () => {
+                loadSaveState({ name: 'Quicksave', state: JSON.parse(qs) });
+            });
+            loadSaveList.appendChild(entry);
+        }
+
+        for (let i = 0; i < saves.length; i++) {
+            const s = saves[i];
+            const d = new Date(s.date);
+            const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const levelName = (typeof LEVEL_NAMES !== 'undefined' && LEVEL_NAMES[s.level - 1]) ? LEVEL_NAMES[s.level - 1] : 'Level ' + s.level;
+
+            const entry = document.createElement('div');
+            entry.className = 'load-save-entry';
+            entry.innerHTML = `<div>
+                <div class="load-save-name">${i + 1}. ${s.name}</div>
+                <div class="load-save-info">Lv${s.level} ${levelName} - ${dateStr}</div>
+            </div>`;
+            entry.addEventListener('click', () => {
+                loadSaveState(s);
+            });
+            loadSaveList.appendChild(entry);
+        }
+
+        loadOverlay.classList.remove('hidden');
+    }
+
+    if (btnLoad) {
+        btnLoad.addEventListener('click', () => showLoadScreen());
+    }
+
+    loadCancelBtn.addEventListener('click', () => {
+        loadOverlay.classList.add('hidden');
+    });
 
     const startupOverlay = document.getElementById('startup-overlay');
     if (startupOverlay) {
@@ -1429,8 +1691,8 @@ function init() {
         autoPotionCb.addEventListener('change', (e) => { state.settings.autoPotion = e.target.checked; });
     }
 
-    if (btnInfo) { btnInfo.addEventListener('click', () => { infoOverlay.style.display = 'block'; }); }
-    if (btnCloseInfo) { btnCloseInfo.addEventListener('click', () => { infoOverlay.style.display = 'none'; }); }
+    if (btnInfo) { btnInfo.addEventListener('click', () => { infoOverlay.classList.remove('hidden'); }); }
+    if (btnCloseInfo) { btnCloseInfo.addEventListener('click', () => { infoOverlay.classList.add('hidden'); }); }
 
     const gameCanvas = document.getElementById('game-canvas');
     if (gameCanvas) {

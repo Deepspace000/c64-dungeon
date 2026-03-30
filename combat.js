@@ -8,11 +8,16 @@
 
 function calcPlayerAttack() {
     let atk = 1;
-    if (state.hands.left === 'Slightly Less Rusty Sword' || state.hands.right === 'Slightly Less Rusty Sword') {
-        atk = 4;
-    } else if (state.hands.left === 'Rusty Sword' || state.hands.right === 'Rusty Sword') {
-        atk = 3;
-    }
+
+    // Check both hands for weapons and use the attackBonus from LEVEL_WEAPONS
+    [state.hands.left, state.hands.right].forEach(item => {
+        if (!item) return;
+        const weapon = LEVEL_WEAPONS.find(w => w.name === item);
+        if (weapon && weapon.attackBonus > atk) {
+            atk = weapon.attackBonus;
+        }
+    });
+
     state.player.attack = atk;
 
     const atkText = document.getElementById('attack-val-text');
@@ -126,15 +131,21 @@ function attackFront() {
                 playSound('attack');
                 state.animations.push({ type: 'swipe', timer: 10, color: colors.white });
 
-                let isDualWielding = (state.hands.left === 'Rusty Sword' && state.hands.right === 'Slightly Less Rusty Sword') ||
-                    (state.hands.right === 'Rusty Sword' && state.hands.left === 'Slightly Less Rusty Sword');
+                const leftWeapon = state.hands.left ? LEVEL_WEAPONS.find(w => w.name === state.hands.left) : null;
+                const rightWeapon = state.hands.right ? LEVEL_WEAPONS.find(w => w.name === state.hands.right) : null;
+                let isDualWielding = leftWeapon && rightWeapon && state.hands.left !== state.hands.right;
 
                 if (isDualWielding) {
                     state.animations.push({ type: 'swipe', timer: 15, color: colors.cyan });
                 }
 
+                // Main hand uses the best weapon's attackBonus, offhand does 50% of the weaker weapon
                 let playerDmg = state.player.attack * 2;
-                let offHandDmg = isDualWielding ? 3 : 0;
+                let offHandDmg = 0;
+                if (isDualWielding) {
+                    const offHandBonus = Math.min(leftWeapon.attackBonus, rightWeapon.attackBonus);
+                    offHandDmg = Math.floor(offHandBonus * 0.5);
+                }
                 let totalDmg = playerDmg + offHandDmg;
 
                 let dmgReduction = Math.max(0, e.level - 1);

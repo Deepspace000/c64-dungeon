@@ -7,7 +7,7 @@
     <title>The Deepest Depths</title>
     <!-- C64 Style Pixel Font -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=40">
+    <link rel="stylesheet" href="style.css?v=99">
 </head>
 
 <body>
@@ -17,17 +17,12 @@
             <span id="level-title-display">LEVEL 1: The Red Chambers</span>
         </div>
 
-        <!-- Column 1: Center (Quest, Minimap, Menu) -->
+        <!-- Column 1: Minimap, Quests, Menu -->
         <div class="app-col" id="col-center">
-            <div class="panel-section fixed-height">
-                <button id="btn-menu" class="splash-btn menu-btn">MENU</button>
-            </div>
-
             <div class="panel-section fixed-height" id="minimap-panel">
-                <h2>MAGIC MAP</h2>
+                <h2>MAP</h2>
                 <div id="minimap-container">
-                    <!-- Minimap will be drawn here -->
-                    <canvas id="minimap-canvas" width="124" height="124"></canvas>
+                    <canvas id="minimap-canvas" width="166" height="166"></canvas>
                 </div>
             </div>
 
@@ -36,6 +31,9 @@
                 <div id="quest-text">Destroy all creatures on level for reward.</div>
                 <div id="quest-progress">0/5 Slain</div>
             </div>
+
+            <button id="btn-menu" class="splash-btn menu-btn" style="width:100%; font-size:11px; padding:8px;">MENU</button>
+            <p style="font-size:10px; color:#777; text-align:center; margin:6px 0 0 0;">Press M for Depths Map</p>
         </div>
 
         <!-- Column 2: Game & Fighting -->
@@ -155,11 +153,39 @@
                 </div>
             </div>
             <!-- Info Screen -->
-            <div id="info-overlay" class="hidden">
-                <h2>Controls</h2>
-                <p>W: Move Forward<br>S: Move Backward<br>A: Turn Left<br>D: Turn Right<br>Q: Strafe Left<br>E: Strafe
-                    Right<br><br>Click monsters or use 'Attack' to fight.<br>Click Inventory items to equip/use.</p>
-                <button class="splash-btn" id="btn-close-info">CLOSE</button>
+            <div id="info-overlay" class="hidden" style="overflow-y:auto; max-height:90vh;">
+                <h2>THE DEEPEST DEPTHS</h2>
+                <p style="font-size:9px; line-height:2; text-align:left;">
+                    Welcome to the Deepest Depths — a dungeon crawler debt collector game where you have been thrown into the depths so you can gather gold to pay off the money that you owe. This is a game where you never gain levels, but the monsters do, and you have to use your smarts to defeat the denizens of the depths, find gold, weapons and potions. Reach the bottom to conquer the darkest overlord at level 20 and surface debt free!
+                </p>
+
+                <h2 style="margin-top:20px;">CONTROLS</h2>
+                <p style="font-size:9px; line-height:2; text-align:left;">
+                    W: Move Forward | S: Move Backward<br>
+                    A: Turn Left | D: Turn Right<br>
+                    Q: Strafe Left | E: Strafe Right<br>
+                    Z: Wait | Space: Interact/Move<br>
+                    F5: Quicksave | F7: Quickload<br><br>
+                    Click monsters or press Attack to fight.<br>
+                    Click inventory items to equip or use them.
+                </p>
+
+                <h2 style="margin-top:20px;">HOW THIS GAME WAS MADE</h2>
+                <p style="font-size:9px; line-height:2; text-align:left;">
+                    The Deepest Depths was built entirely using AI-assisted development. The game concept, design, and creative direction were done by Mirko Ruckels. The code, rendering engine, procedural map generation, and all game systems were developed collaboratively with Claude (Anthropic) as the AI coding assistant. All pixel art enemy sprites and visual assets were generated using Gemini (Google) and processed for the C64 aesthetic. The game runs entirely in the browser using HTML5 Canvas and the Web Audio API — no frameworks, no libraries, just vanilla JavaScript.
+                </p>
+
+                <h2 style="margin-top:20px;">CREDITS</h2>
+                <p style="font-size:10px; line-height:2.5; text-align:center;">
+                    <span style="color:#EEEE77;">Game Design & Creative Direction</span><br>
+                    Mirko Ruckels<br><br>
+                    <span style="color:#EEEE77;">AI Development</span><br>
+                    Claude (Anthropic)<br><br>
+                    <span style="color:#EEEE77;">Art & Assets</span><br>
+                    Gemini (Google) & Hand-Processed
+                </p>
+
+                <button class="splash-btn" id="btn-close-info" style="margin-top:20px;">CLOSE</button>
             </div>
             <!-- Sound Screen -->
             <div id="sound-overlay" class="hidden">
@@ -177,17 +203,20 @@
                 <button class="splash-btn sound-back-btn" id="btn-close-sound">BACK</button>
             </div>
             <!-- Settings Screen -->
-            <div id="settings-overlay" class="hidden">
-                <h2>Settings</h2>
-                <div class="sound-control-group settings-section">
-                    <label>Screen Size:</label><br><br>
-                    <select id="screen-size-select" class="settings-select" title="Screen Size">
+            <div id="settings-overlay" class="hidden" style="max-width:400px;">
+                <h2>SETTINGS</h2>
+                <div class="sound-control-group settings-section" style="text-align:left;">
+                    <label style="color:#EEEE77; font-size:10px;">Screen Size:</label><br><br>
+                    <select id="screen-size-select" class="settings-select" title="Screen Size" style="width:100%; padding:8px; font-family:'Press Start 2P',monospace; font-size:9px; background:#333; color:#fff; border:2px solid #777;">
                         <option value="1x">Default (1x)</option>
                         <option value="2x">Large (2x)</option>
                         <option value="3x">Larger (3x)</option>
                     </select>
                 </div>
-                <button class="splash-btn sound-back-btn settings-close-btn" id="btn-close-settings">BACK</button>
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button class="splash-btn" id="btn-apply-settings" style="flex:1; font-size:10px;">APPLY</button>
+                    <button class="splash-btn" id="btn-close-settings" style="flex:1; font-size:10px;">BACK</button>
+                </div>
             </div>
         </div>
 
@@ -206,6 +235,50 @@
             <div class="transition-text">
                 <p id="transition-message">You descend further into the depths...</p>
                 <p id="transition-prompt" class="hidden blink">press space or click to continue your quest</p>
+            </div>
+        </div>
+
+        <!-- Load Game Dialog -->
+        <div id="load-overlay" class="hidden">
+            <div id="load-box">
+                <p style="color:var(--c-yellow); font-size:10px; margin:0 0 12px 0;">LOAD GAME</p>
+                <div id="load-save-list"></div>
+                <button class="splash-btn" id="load-cancel" style="width:100%; font-size:9px; margin-top:12px;">CANCEL</button>
+            </div>
+        </div>
+
+        <!-- Depths Map Overlay -->
+        <div id="depths-map-overlay" class="hidden">
+            <div id="depths-map-box">
+                <h2 style="color:#EEEE77; font-size:12px; margin:0 0 10px 0;">THE DEEPEST DEPTHS</h2>
+                <canvas id="depths-map-canvas" width="400" height="700"></canvas>
+                <p style="color:#777; font-size:7px; margin:8px 0 0 0;">Press M or click to close</p>
+            </div>
+        </div>
+
+        <!-- Save Name Input Dialog -->
+        <div id="save-overlay" class="hidden">
+            <div id="save-box">
+                <p style="color:var(--c-yellow); font-size:10px; margin:0 0 10px 0;">SAVE GAME</p>
+                <input type="text" id="save-name-input" placeholder="Enter save name..." maxlength="20"
+                    style="width:100%; padding:8px; font-family:'Press Start 2P',monospace; font-size:9px;
+                    background:var(--c-darkgrey); color:var(--c-white); border:2px solid var(--c-grey);
+                    box-sizing:border-box;">
+                <div style="display:flex; gap:10px; justify-content:center; margin-top:12px;">
+                    <button class="splash-btn" id="save-confirm" style="width:100px; font-size:9px;">SAVE</button>
+                    <button class="splash-btn" id="save-cancel" style="width:100px; font-size:9px;">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- In-game Confirm Dialog -->
+        <div id="confirm-overlay" class="hidden">
+            <div id="confirm-box">
+                <p id="confirm-text">Are you sure?</p>
+                <div style="display:flex; gap:15px; justify-content:center; margin-top:15px;">
+                    <button class="splash-btn" id="confirm-yes" style="width:100px;">YES</button>
+                    <button class="splash-btn" id="confirm-no" style="width:100px;">NO</button>
+                </div>
             </div>
         </div>
 
@@ -237,15 +310,15 @@
     </div>
 
     <!-- game.js first: defines all globals (state, colors, ctx, audio, assets, constants) -->
-    <script src="game.js?v=40"></script>
+    <script src="game.js?v=99"></script>
     <!-- Module scripts: order doesn't matter as they only define functions -->
-    <script src="renderer.js?v=40"></script>
-    <script src="entities.js?v=40"></script>
-    <script src="effects.js?v=40"></script>
-    <script src="ui.js?v=40"></script>
-    <script src="combat.js?v=40"></script>
-    <script src="movement.js?v=40"></script>
-    <script src="input.js?v=40"></script>
+    <script src="renderer.js?v=99"></script>
+    <script src="entities.js?v=99"></script>
+    <script src="effects.js?v=99"></script>
+    <script src="ui.js?v=99"></script>
+    <script src="combat.js?v=99"></script>
+    <script src="movement.js?v=99"></script>
+    <script src="input.js?v=99"></script>
     <!-- Boot after all scripts loaded -->
     <script>
         if (document.readyState === 'loading') {

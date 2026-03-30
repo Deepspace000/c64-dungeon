@@ -27,7 +27,7 @@ function checkAutoLoot() {
                     playSound('powerup');
                     showMessage("HEALTH RESTORED! GAME SAVED", { timer: 120, color: colors.cyan });
                     updateUIState();
-                    localStorage.setItem('c64_dungeon_save_v2', JSON.stringify(state));
+                    saveGame('Fountain Save');
                 }
                 continue;
             } else if (item.type === 'gold') {
@@ -40,13 +40,23 @@ function checkAutoLoot() {
                 if (item.name === 'Gold Key') state.quest.goldKeyFound = true;
                 if (item.name === 'Black Key') state.quest.blackKeyFound = true;
             } else if (item.type === 'Health Potion') {
+                const potionCount = state.inventory.filter(i => i === 'Health Potion' || i === 'Super Potion').length;
+                if (potionCount >= 20) {
+                    showMessage("You can't carry any more potions.", { timer: 120 });
+                    continue;
+                }
                 state.inventory.push(item.name);
                 showMessage(`Found ${item.name}!`, { timer: 120 });
             } else if (item.type === 'chest') {
                 const goldAmount = Math.floor(Math.random() * 20) + 10;
                 state.player.gold += goldAmount;
-                state.inventory.push('Health Potion');
-                showMessage(`Opened Chest! Found ${goldAmount} Gold and a Health Potion!`);
+                const potionCount = state.inventory.filter(i => i === 'Health Potion' || i === 'Super Potion').length;
+                if (potionCount < 20) {
+                    state.inventory.push('Health Potion');
+                    showMessage(`Opened Chest! Found ${goldAmount} Gold and a Health Potion!`);
+                } else {
+                    showMessage(`Opened Chest! Found ${goldAmount} Gold! (Potion bag full)`);
+                }
                 checkGoldDebt();
             } else {
                 state.inventory.push(item.name);
@@ -134,6 +144,8 @@ function handleMove(nx, ny) {
             if (transMsg) {
                 if (state.level === 6) {
                     transMsg.innerText = "You have completed level 5 and are making headway into the deepest depths. You are now 1/4 of the way into the depths. Congrats on defeating the boss and good luck- the next 5 levels will be more challenging, but the loot will be better! - Unknown Mage";
+                } else if (state.level === 11) {
+                    transMsg.innerText = "The Abyssal Throne has fallen. You are now HALFWAY through the deepest depths. The creatures below are far more dangerous than anything you have faced. Steel yourself, adventurer. The debt must be paid. - Unknown Mage";
                 } else {
                     transMsg.innerText = "You descend further into the depths...";
                 }

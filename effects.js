@@ -27,6 +27,12 @@ function render() {
         drawBlueMist();
         drawDrips();
     }
+    if (state.level === 5) drawCryptMist();
+    if (state.level === 6) { drawBrightLight(); }
+    if (state.level === 7) { drawSunkenWater(); drawDrips(); }
+    if (state.level === 8) drawObsidianMist();
+    if (state.level === 10) drawThroneRoom();
+    if (state.level === 9) drawCaveWind();
     drawLighting();
     drawMinimap();
     drawAnimations();
@@ -294,10 +300,346 @@ function drawPuddles() {
     }
 }
 
+function drawThroneRoom() {
+    const t = Date.now() / 1000;
+
+    // Dark red atmospheric overlay
+    ctx.fillStyle = 'rgba(40, 5, 5, 0.08)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Slow dark red mist
+    for (let i = 0; i < state.mistParticles.length; i++) {
+        let p = state.mistParticles[i];
+        p.x += p.speed * 0.2;
+        p.y += Math.sin(t * 0.3 + i * 0.5) * 0.2;
+        if (p.x - p.size * 4 > GAME_WIDTH) {
+            p.x = -p.size * 5;
+            p.y = GAME_HEIGHT * 0.3 + Math.random() * (GAME_HEIGHT * 0.6);
+        }
+        const mistAlpha = 0.06 + p.opacity * 0.06;
+        const r = p.size * 3.5;
+        const mistGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        mistGrad.addColorStop(0, `rgba(80, 10, 10, ${mistAlpha})`);
+        mistGrad.addColorStop(0.5, `rgba(50, 5, 5, ${mistAlpha * 0.4})`);
+        mistGrad.addColorStop(1, 'rgba(30, 0, 0, 0)');
+        ctx.fillStyle = mistGrad;
+        ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+    }
+
+    // Flickering firelight glow from gold stands
+    const flicker1 = 0.6 + Math.sin(t * 4) * 0.2 + Math.sin(t * 7) * 0.1;
+    const flicker2 = 0.6 + Math.sin(t * 3.5 + 2) * 0.2 + Math.sin(t * 6 + 1) * 0.1;
+
+    // Left fire glow
+    const glowL = ctx.createRadialGradient(GAME_WIDTH * 0.15, GAME_HEIGHT * 0.3, 0, GAME_WIDTH * 0.15, GAME_HEIGHT * 0.3, 80);
+    glowL.addColorStop(0, `rgba(255, 120, 20, ${0.04 * flicker1})`);
+    glowL.addColorStop(1, 'rgba(200, 60, 0, 0)');
+    ctx.fillStyle = glowL;
+    ctx.fillRect(0, 0, GAME_WIDTH * 0.4, GAME_HEIGHT * 0.6);
+
+    // Right fire glow
+    const glowR = ctx.createRadialGradient(GAME_WIDTH * 0.85, GAME_HEIGHT * 0.3, 0, GAME_WIDTH * 0.85, GAME_HEIGHT * 0.3, 80);
+    glowR.addColorStop(0, `rgba(255, 120, 20, ${0.04 * flicker2})`);
+    glowR.addColorStop(1, 'rgba(200, 60, 0, 0)');
+    ctx.fillStyle = glowR;
+    ctx.fillRect(GAME_WIDTH * 0.6, 0, GAME_WIDTH * 0.4, GAME_HEIGHT * 0.6);
+}
+
+function drawCaveWind() {
+    const t = Date.now() / 1000;
+
+    // Dusty brown atmosphere
+    ctx.fillStyle = 'rgba(60, 30, 15, 0.06)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Fast-moving windy mist — reddish brown
+    for (let i = 0; i < state.mistParticles.length; i++) {
+        let p = state.mistParticles[i];
+        // Wind gusts — faster horizontal movement with turbulence
+        p.x += p.speed * 0.8 + Math.sin(t * 2 + i * 0.3) * 0.5;
+        p.y += Math.sin(t * 1.5 + i * 0.9) * 0.8 + Math.cos(t * 0.7 + i * 1.4) * 0.4;
+        if (p.x - p.size * 4 > GAME_WIDTH) {
+            p.x = -p.size * 6;
+            p.y = GAME_HEIGHT * 0.1 + Math.random() * (GAME_HEIGHT * 0.8);
+        }
+        const mistAlpha = 0.12 + p.opacity * 0.12;
+        const r = p.size * 4;
+        // Stretched horizontally for wind effect
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(2.2, 0.5);
+        const mistGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+        mistGrad.addColorStop(0, `rgba(140, 75, 30, ${mistAlpha})`);
+        mistGrad.addColorStop(0.5, `rgba(100, 50, 20, ${mistAlpha * 0.4})`);
+        mistGrad.addColorStop(1, 'rgba(60, 30, 10, 0)');
+        ctx.fillStyle = mistGrad;
+        ctx.fillRect(-r, -r, r * 2, r * 2);
+        ctx.restore();
+    }
+
+    // Dust particles blown by wind
+    for (let i = 0; i < 25; i++) {
+        const baseX = ((i * 157 + 31) % GAME_WIDTH);
+        const baseY = ((i * 89 + 47) % GAME_HEIGHT);
+        const dx = baseX + (t * 40 + i * 50) % (GAME_WIDTH + 20) - 10;
+        const dy = baseY + Math.sin(t * 2 + i * 1.7) * 8;
+        const wrappedX = ((dx % (GAME_WIDTH + 20)) + GAME_WIDTH + 20) % (GAME_WIDTH + 20) - 10;
+        const alpha = 0.25 + Math.sin(t * 1.5 + i) * 0.12;
+        ctx.fillStyle = `rgba(180, 120, 60, ${alpha})`;
+        ctx.fillRect(wrappedX, dy, 2, 1.5);
+    }
+}
+
+function drawObsidianMist() {
+    const t = Date.now() / 1000;
+
+    // Dark purple ambient overlay
+    ctx.fillStyle = 'rgba(30, 10, 40, 0.08)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Purple mist drifting
+    for (let i = 0; i < state.mistParticles.length; i++) {
+        let p = state.mistParticles[i];
+        p.x += p.speed * 0.35;
+        p.y += Math.sin(t * 0.5 + i * 0.6) * 0.3;
+        if (p.x - p.size * 4 > GAME_WIDTH) {
+            p.x = -p.size * 6;
+            p.y = GAME_HEIGHT * 0.2 + Math.random() * (GAME_HEIGHT * 0.7);
+        }
+        const mistAlpha = 0.06 + p.opacity * 0.08;
+        const r = p.size * 3.5;
+        const mistGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        mistGrad.addColorStop(0, `rgba(100, 40, 140, ${mistAlpha})`);
+        mistGrad.addColorStop(0.5, `rgba(70, 20, 100, ${mistAlpha * 0.4})`);
+        mistGrad.addColorStop(1, 'rgba(40, 10, 60, 0)');
+        ctx.fillStyle = mistGrad;
+        ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+    }
+
+    // Occasional gem sparkle flashes
+    for (let i = 0; i < 8; i++) {
+        const sparkPhase = (t * 0.8 + i * 1.3) % 3;
+        if (sparkPhase < 0.3) {
+            const sx = ((i * 173 + 29) % GAME_WIDTH);
+            const sy = ((i * 97 + 41) % GAME_HEIGHT);
+            const sparkAlpha = (0.3 - sparkPhase) * 1.5;
+            ctx.fillStyle = `rgba(200, 150, 255, ${sparkAlpha * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+}
+
+function drawSunkenWater() {
+    const t = Date.now() / 1000;
+
+    // Blue-green atmospheric tint on lower half
+    const waterOverlay = ctx.createLinearGradient(0, GAME_HEIGHT * 0.4, 0, GAME_HEIGHT);
+    waterOverlay.addColorStop(0, 'rgba(10, 40, 60, 0)');
+    waterOverlay.addColorStop(0.5, 'rgba(10, 40, 60, 0.06)');
+    waterOverlay.addColorStop(1, 'rgba(10, 50, 80, 0.12)');
+    ctx.fillStyle = waterOverlay;
+    ctx.fillRect(0, GAME_HEIGHT * 0.4, GAME_WIDTH, GAME_HEIGHT * 0.6);
+
+    // Drifting mist — damp library fog
+    for (let i = 0; i < state.mistParticles.length; i++) {
+        let p = state.mistParticles[i];
+        p.x += p.speed * 0.4;
+        p.y += Math.sin(t * 0.5 + i * 0.8) * 0.4;
+        if (p.x - p.size * 4 > GAME_WIDTH) {
+            p.x = -p.size * 6;
+            p.y = GAME_HEIGHT * 0.2 + Math.random() * (GAME_HEIGHT * 0.6);
+        }
+        const mistAlpha = 0.08 + p.opacity * 0.1;
+        const r = p.size * 4;
+        const mistGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        mistGrad.addColorStop(0, `rgba(60, 120, 150, ${mistAlpha})`);
+        mistGrad.addColorStop(0.5, `rgba(40, 90, 120, ${mistAlpha * 0.4})`);
+        mistGrad.addColorStop(1, 'rgba(20, 60, 90, 0)');
+        ctx.fillStyle = mistGrad;
+        ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+    }
+
+    // Floating paper/book debris on water surface
+    for (let i = 0; i < 12; i++) {
+        const baseX = ((i * 157 + 23) % GAME_WIDTH);
+        const baseY = GAME_HEIGHT * 0.55 + ((i * 83 + 41) % (GAME_HEIGHT * 0.4));
+        const dx = baseX + Math.sin(t * 0.2 + i * 1.9) * 10;
+        const dy = baseY + Math.sin(t * 0.3 + i * 1.3) * 3;
+        const rot = Math.sin(t * 0.15 + i * 2.7) * 0.3;
+        const alpha = 0.15 + Math.sin(t * 0.5 + i) * 0.05;
+
+        ctx.save();
+        ctx.translate(dx, dy);
+        ctx.rotate(rot);
+        // Small page/parchment
+        ctx.fillStyle = `rgba(180, 170, 140, ${alpha})`;
+        ctx.fillRect(-2, -1.5, 4, 3);
+        ctx.strokeStyle = `rgba(100, 90, 60, ${alpha * 0.5})`;
+        ctx.lineWidth = 0.3;
+        ctx.strokeRect(-2, -1.5, 4, 3);
+        ctx.restore();
+    }
+
+    // Occasional ripple circles on the water
+    for (let i = 0; i < 5; i++) {
+        const phase = (t * 0.3 + i * 1.7) % 3;
+        if (phase < 2) {
+            const rx = ((i * 211 + 67) % GAME_WIDTH);
+            const ry = GAME_HEIGHT * 0.55 + ((i * 127 + 19) % (GAME_HEIGHT * 0.35));
+            const rippleR = 2 + phase * 6;
+            const rippleAlpha = (1 - phase / 2) * 0.12;
+            ctx.strokeStyle = `rgba(100, 180, 220, ${rippleAlpha})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.ellipse(rx, ry, rippleR, rippleR * 0.3, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+}
+
+function drawCryptMist() {
+    const t = Date.now() / 1000;
+
+    // Dark warm ambient overlay
+    ctx.fillStyle = 'rgba(60, 30, 10, 0.08)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Drifting dark brown/orange mist
+    for (let i = 0; i < state.mistParticles.length; i++) {
+        let p = state.mistParticles[i];
+        p.x += p.speed * 0.5;
+        p.y += Math.sin(t * 0.6 + i * 0.6) * 0.5 + Math.cos(t * 0.25 + i * 1.3) * 0.2;
+        if (p.x - p.size * 4 > GAME_WIDTH) {
+            p.x = -p.size * 7;
+            p.y = GAME_HEIGHT * 0.15 + Math.random() * (GAME_HEIGHT * 0.75);
+        }
+        const mistAlpha = 0.08 + p.opacity * 0.1;
+        const r = p.size * 4.5;
+
+        // Alternate between dark brown and burnt orange mist
+        const isBrown = (i % 3 !== 0);
+        const cr = isBrown ? 80 : 160;
+        const cg = isBrown ? 45 : 80;
+        const cb = isBrown ? 15 : 10;
+
+        const mistGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        mistGrad.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${mistAlpha})`);
+        mistGrad.addColorStop(0.5, `rgba(${cr}, ${cg}, ${cb}, ${mistAlpha * 0.4})`);
+        mistGrad.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+        ctx.fillStyle = mistGrad;
+        ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+
+        // Secondary blob
+        const r2 = r * 0.5;
+        const ox = p.x + p.size * 2;
+        const oy = p.y - p.size * 0.3 + Math.sin(t * 0.5 + i) * 1.5;
+        const mistGrad2 = ctx.createRadialGradient(ox, oy, 0, ox, oy, r2);
+        mistGrad2.addColorStop(0, `rgba(${cr + 20}, ${cg + 10}, ${cb}, ${mistAlpha * 0.5})`);
+        mistGrad2.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
+        ctx.fillStyle = mistGrad2;
+        ctx.fillRect(ox - r2, oy - r2, r2 * 2, r2 * 2);
+    }
+}
+
+function drawBrightLight() {
+    const t = Date.now() / 1000;
+
+    // Warm ambient haze — old dusty hall
+    ctx.fillStyle = 'rgba(180, 160, 100, 0.12)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Drifting mist — cool blue-grey wisps contrasting the warm yellow walls
+    for (let i = 0; i < state.mistParticles.length; i++) {
+        let p = state.mistParticles[i];
+        p.x += p.speed * 0.6;
+        p.y += Math.sin(t * 0.8 + i * 0.7) * 0.6 + Math.cos(t * 0.3 + i * 1.1) * 0.3;
+        if (p.x - p.size * 4 > GAME_WIDTH) {
+            p.x = -p.size * 8;
+            p.y = GAME_HEIGHT * 0.2 + Math.random() * (GAME_HEIGHT * 0.7);
+        }
+        const mistAlpha = 0.1 + p.opacity * 0.12;
+        const r = p.size * 5;
+        // Cool blue-grey mist blob
+        const mistGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        mistGrad.addColorStop(0, `rgba(140, 160, 190, ${mistAlpha})`);
+        mistGrad.addColorStop(0.5, `rgba(130, 150, 180, ${mistAlpha * 0.4})`);
+        mistGrad.addColorStop(1, 'rgba(120, 140, 170, 0)');
+        ctx.fillStyle = mistGrad;
+        ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+        // Secondary offset blob for volume
+        const r2 = r * 0.6;
+        const ox = p.x + p.size * 2;
+        const oy = p.y - p.size * 0.5 + Math.sin(t * 0.6 + i) * 2;
+        const mistGrad2 = ctx.createRadialGradient(ox, oy, 0, ox, oy, r2);
+        mistGrad2.addColorStop(0, `rgba(150, 165, 195, ${mistAlpha * 0.5})`);
+        mistGrad2.addColorStop(1, 'rgba(130, 150, 180, 0)');
+        ctx.fillStyle = mistGrad2;
+        ctx.fillRect(ox - r2, oy - r2, r2 * 2, r2 * 2);
+    }
+
+    // Sunlight rays — warm golden shafts, very subtle
+    ctx.save();
+
+    // Ray 1 — main sunbeam
+    const pulse1 = 0.7 + Math.sin(t * 0.8) * 0.3;
+    const grad1 = ctx.createLinearGradient(GAME_WIDTH * 0.8, 0, GAME_WIDTH * 0.2, GAME_HEIGHT);
+    grad1.addColorStop(0, `rgba(255, 220, 120, ${0.12 * pulse1})`);
+    grad1.addColorStop(0.5, `rgba(240, 200, 100, ${0.06 * pulse1})`);
+    grad1.addColorStop(1, 'rgba(220, 180, 80, 0)');
+    ctx.fillStyle = grad1;
+    ctx.beginPath();
+    ctx.moveTo(GAME_WIDTH * 0.7, 0);
+    ctx.lineTo(GAME_WIDTH * 0.85, 0);
+    ctx.lineTo(GAME_WIDTH * 0.35, GAME_HEIGHT);
+    ctx.lineTo(GAME_WIDTH * 0.15, GAME_HEIGHT);
+    ctx.fill();
+
+    // Ray 2 — thinner secondary
+    const pulse2 = 0.6 + Math.sin(t * 1.1 + 2) * 0.4;
+    const grad2 = ctx.createLinearGradient(GAME_WIDTH * 0.5, 0, GAME_WIDTH * 0.1, GAME_HEIGHT * 0.8);
+    grad2.addColorStop(0, `rgba(255, 210, 110, ${0.08 * pulse2})`);
+    grad2.addColorStop(1, 'rgba(230, 190, 90, 0)');
+    ctx.fillStyle = grad2;
+    ctx.beginPath();
+    ctx.moveTo(GAME_WIDTH * 0.45, 0);
+    ctx.lineTo(GAME_WIDTH * 0.55, 0);
+    ctx.lineTo(GAME_WIDTH * 0.15, GAME_HEIGHT * 0.8);
+    ctx.lineTo(GAME_WIDTH * 0.0, GAME_HEIGHT * 0.8);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Floating sunlight particles — glowing motes drifting lazily
+    for (let i = 0; i < 25; i++) {
+        // Each particle orbits slowly with unique phase
+        const baseX = ((i * 137 + 41) % GAME_WIDTH);
+        const baseY = ((i * 89 + 17) % GAME_HEIGHT);
+        const dx = baseX + Math.sin(t * 0.3 + i * 2.1) * 15 + Math.cos(t * 0.2 + i * 1.3) * 8;
+        const dy = baseY + Math.sin(t * 0.25 + i * 1.7) * 10 + Math.cos(t * 0.15 + i * 0.9) * 5;
+        const sparkle = 0.3 + Math.sin(t * 1.5 + i * 0.9) * 0.2;
+        const size = 1.5 + Math.sin(t * 0.8 + i * 1.4) * 0.8;
+
+        // Warm golden glow
+        const glowR = size + 4;
+        const glow = ctx.createRadialGradient(dx, dy, 0, dx, dy, glowR);
+        glow.addColorStop(0, `rgba(255, 230, 150, ${sparkle})`);
+        glow.addColorStop(0.5, `rgba(255, 220, 120, ${sparkle * 0.3})`);
+        glow.addColorStop(1, 'rgba(255, 210, 100, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(dx - glowR, dy - glowR, glowR * 2, glowR * 2);
+
+        // Bright core
+        ctx.fillStyle = `rgba(255, 250, 220, ${sparkle * 1.5})`;
+        ctx.fillRect(dx - size * 0.4, dy - size * 0.4, size * 0.8, size * 0.8);
+    }
+}
+
 function drawLighting() {
     if (state.level !== 3) return;
 
-    const hasTorchEquipped = state.hands.left === 'Torch' || state.hands.right === 'Torch';
+    const hasTorchEquipped = state.torchEquipped || state.hands.left === 'Torch' || state.hands.right === 'Torch';
     const ambientDark = hasTorchEquipped ? 0.3 : 0.82;
 
     lightingCtx.globalCompositeOperation = 'source-over';
