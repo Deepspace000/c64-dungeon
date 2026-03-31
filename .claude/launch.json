@@ -4,8 +4,9 @@
     {
       "name": "C64 Dungeon (Python HTTP Server)",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8082"],
-      "port": 8082
+      "runtimeArgs": ["-m", "http.server"],
+      "port": 8082,
+      "autoPort": true
     }
   ]
 }

@@ -147,8 +147,15 @@ export function generateMap(W, H) {
     const spawnEnemy = (typeName, lvl, hpOverride, attackOverride) => {
         let spot = getEmptySpot(true);
         if (spot) {
-            const hp = hpOverride || (10 + lvl * 4);
-            const atk = attackOverride || (2 + lvl * 2);
+            // Look up base stats from BESTIARY
+            let baseDef = null;
+            for (const floorEntries of Object.values(BESTIARY)) {
+                const found = floorEntries.find(m => m.name === typeName && !m.isBoss);
+                if (found) { baseDef = found; break; }
+            }
+            // Scale HP by enemy level: lvl1=60%, lvl2=80%, lvl3=100%, lvl4=120%, lvl5=140%
+            const hp = hpOverride || (baseDef ? Math.ceil(baseDef.hp * (0.4 + lvl * 0.2)) : 10 + lvl * 4);
+            const atk = attackOverride || (baseDef ? baseDef.attack : 2 + lvl * 2);
             state.enemies.push({
                 x: spot.x, y: spot.y,
                 hp, maxHp: hp,
@@ -463,7 +470,7 @@ export function generateMap(W, H) {
         }
     }
 
-    // Level 10 - The Abyssal Throne: dark red mist
+    // Level 10 - The Abyssal Throne: dark red mist + Shadow Merchant
     if (state.level === 10) {
         for (let i = 0; i < 35; i++) {
             state.mistParticles.push({
@@ -473,6 +480,30 @@ export function generateMap(W, H) {
                 size: 12 + Math.random() * 25,
                 opacity: 0.04 + Math.random() * 0.08
             });
+        }
+        // Shadow Merchant — embedded in a wall adjacent to open floor
+        for (let attempts = 0; attempts < 200; attempts++) {
+            const mx = Math.floor(Math.random() * (W - 4)) + 2;
+            const my = Math.floor(Math.random() * (H - 4)) + 2;
+            if (map[my][mx] !== 1) continue;
+            const distToPlayer = Math.abs(mx - state.player.x) + Math.abs(my - state.player.y);
+            if (distToPlayer < 5) continue;
+            const dirs = [{dx:0,dy:-1},{dx:0,dy:1},{dx:-1,dy:0},{dx:1,dy:0}];
+            let hasFloor = false;
+            for (const d of dirs) {
+                if (map[my + d.dy] && map[my + d.dy][mx + d.dx] === 0) { hasFloor = true; break; }
+            }
+            if (!hasFloor) continue;
+            let open = 0;
+            for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                    if (map[my + dy] && map[my + dy][mx + dx] === 0) open++;
+                }
+            }
+            if (open < 8) continue;
+            state.items.push({ x: mx, y: my, type: 'shopkeeper', name: 'The Shadow Merchant', persistent: true, isNPC: true });
+            state.enemies = state.enemies.filter(e => Math.abs(e.x - mx) + Math.abs(e.y - my) > 3);
+            break;
         }
     }
 

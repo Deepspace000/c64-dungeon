@@ -999,6 +999,110 @@
     font-size: 12px;
 }
 
+/* Shop Overlay */
+#shop-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#shop-box {
+    background: #0a0a12;
+    border: 4px solid #CC44CC;
+    padding: 20px 25px;
+    font-family: 'Press Start 2P', monospace;
+    width: 380px;
+    max-height: 90vh;
+}
+
+.shop-tab {
+    background: var(--c-darkgrey) !important;
+    border-color: #555 !important;
+}
+
+.shop-tab.active {
+    background: #CC44CC !important;
+    border-color: #CC44CC !important;
+}
+
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 4px;
+    border-bottom: 1px solid #1a1a2a;
+    font-size: 7px;
+    color: #ccc;
+}
+
+.shop-item:hover {
+    background: #1a1020;
+}
+
+.shop-item-name {
+    flex: 1;
+    color: #fff;
+    font-size: 7px;
+}
+
+.shop-item-stats {
+    color: #888;
+    font-size: 6px;
+    margin-left: 5px;
+}
+
+.shop-item-price {
+    color: #EEEE77;
+    font-size: 7px;
+    margin: 0 8px;
+    white-space: nowrap;
+}
+
+.shop-buy-btn, .shop-sell-btn {
+    padding: 3px 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    cursor: pointer;
+    border: 1px solid;
+}
+
+.shop-buy-btn {
+    background: #002200;
+    color: #00CC55;
+    border-color: #00CC55;
+}
+
+.shop-buy-btn:hover {
+    background: #004400;
+}
+
+.shop-sell-btn {
+    background: #220000;
+    color: #FF7777;
+    border-color: #FF7777;
+}
+
+.shop-sell-btn:hover {
+    background: #440000;
+}
+
+#shop-item-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+#shop-item-list::-webkit-scrollbar-track {
+    background: #0a0a12;
+}
+
+#shop-item-list::-webkit-scrollbar-thumb {
+    background: #CC44CC;
+    border: 1px solid #880088;
+}
+
 /* Depths Map Overlay */
 #depths-map-overlay {
     position: fixed;

@@ -87,6 +87,7 @@ function renderEnemy(x, z, enemy) {
         'The Depth Core':    { img: depthCoreImg,        loaded: depthCoreLoaded },
         'Skrronzor the Level Boss': { img: skeletonImg, loaded: skeletonLoaded, filter: 'brightness(1.2) sepia(0.5) hue-rotate(340deg) saturate(2)' },
         'Abyssius, Lord of the Abyss': { img: abyssiusImg, loaded: abyssiusLoaded },
+        'The Vault Keeper': { img: vaultGuardianImg, loaded: vaultGuardianLoaded, filter: 'brightness(1.3) hue-rotate(30deg) saturate(2)' },
     };
 
     let imgToDraw = skeletonImg;
@@ -191,6 +192,98 @@ function renderItemDrop(x, z, item) {
 
     let h = pBot.y - pTop.y;
     let w = h;
+
+    if (item.type === 'lost_npc') {
+        // Lost NPC — taller, with glow
+        const pTopNPC = project(x, 0.85, z);
+        const npcH = pBot.y - pTopNPC.y;
+        const npcW = npcH * 0.5;
+        const npcLvl = item.npcLevel || 2;
+        const npcImg = lostNpcImgs[npcLvl];
+        const loaded = lostNpcLoaded[npcLvl];
+
+        // Yellow glow if quest active
+        if (item.questAccepted && !item.questComplete) {
+            const t = Date.now() / 1000;
+            const glowAlpha = 0.06 + Math.sin(t * 2) * 0.03;
+            ctx.fillStyle = `rgba(255, 220, 50, ${glowAlpha})`;
+            ctx.beginPath();
+            ctx.arc(pBot.x, pTopNPC.y + npcH * 0.4, npcW * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        // Green glow if quest complete
+        if (item.questComplete) {
+            ctx.fillStyle = 'rgba(0, 200, 80, 0.08)';
+            ctx.beginPath();
+            ctx.arc(pBot.x, pTopNPC.y + npcH * 0.4, npcW * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (loaded && npcImg) {
+            ctx.drawImage(npcImg, pBot.x - npcW / 2, pTopNPC.y, npcW, npcH);
+        } else {
+            ctx.fillStyle = '#EEEE77';
+            ctx.fillRect(pBot.x - w / 4, pTop.y, w / 2, h);
+        }
+
+        // "!" marker above head if quest not accepted
+        if (!item.questAccepted) {
+            ctx.font = `${Math.max(8, npcH * 0.2)}px "Press Start 2P"`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#EEEE77';
+            ctx.fillText('!', pBot.x, pTopNPC.y - 3);
+        } else if (!item.questComplete) {
+            ctx.font = `${Math.max(8, npcH * 0.2)}px "Press Start 2P"`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#FF7777';
+            ctx.fillText('?', pBot.x, pTopNPC.y - 3);
+        }
+        return;
+    }
+
+    if (item.type === 'quest_item') {
+        // Quest item — glowing pickup with bounce
+        const t = Date.now() / 1000;
+        const bounce = Math.sin(t * 3) * 3;
+        const glowR = h * 0.6;
+        ctx.fillStyle = `rgba(255, 220, 50, ${0.15 + Math.sin(t * 2) * 0.08})`;
+        ctx.beginPath();
+        ctx.arc(pBot.x, pTop.y + h / 2 + bounce, glowR, 0, Math.PI * 2);
+        ctx.fill();
+        // Star shape
+        ctx.fillStyle = '#EEEE77';
+        ctx.beginPath();
+        ctx.arc(pBot.x, pTop.y + h / 2 + bounce, h * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFB347';
+        ctx.font = `${Math.max(6, h * 0.3)}px "Press Start 2P"`;
+        ctx.textAlign = 'center';
+        ctx.fillText('★', pBot.x, pTop.y + h / 2 + bounce + 2);
+        return;
+    }
+
+    if (item.type === 'shopkeeper') {
+        // Shadow Merchant — embedded in wall, taller than normal items
+        const pTopNPC = project(x, 0.9, z);
+        const npcH = pBot.y - pTopNPC.y;
+        const npcW = npcH * 0.6;
+        if (shadowMerchantLoaded) {
+            // Subtle purple glow behind
+            const t = Date.now() / 1000;
+            const glowAlpha = 0.08 + Math.sin(t * 1.5) * 0.04;
+            const glowR = npcW * 0.8;
+            ctx.fillStyle = `rgba(180, 80, 220, ${glowAlpha})`;
+            ctx.beginPath();
+            ctx.arc(pBot.x, pTopNPC.y + npcH * 0.4, glowR, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.drawImage(shadowMerchantImg, pBot.x - npcW / 2, pTopNPC.y, npcW, npcH);
+        } else {
+            ctx.fillStyle = '#CC44CC';
+            ctx.fillRect(pBot.x - w / 2, pTop.y, w, h);
+        }
+        return;
+    }
 
     if (item.type === 'fountain') {
         if (fountainLoaded) {

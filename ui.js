@@ -61,9 +61,14 @@ function updateUIState() {
             <span style='color:var(--c-green)'>2. Find the Gold Key-</span> <span style='color:var(--c-white)'>(Opens the mystery room).</span><br>
             <span style='color:var(--c-green)'>3. Find the black key-</span> <span style='color:var(--c-white)'>(Unlocks the exit).</span><br>
             <span style='color:var(--c-green)'>4. Find all secret walls-</span> <span style='color:var(--c-white)'>(Found: ${state.quest.secretsFound}/${state.quest.totalSecrets}).</span><br>
-            <span style='color:var(--c-green)'>5. Pay off 1000 gold debt-</span> <span style='color:var(--c-white)'>(${state.player.gold >= 0 ? 'PAID!' : Math.abs(state.player.gold) + ' remaining'}).</span><br>
+            <span style='color:var(--c-green)'>5. Pay off 2500 gold debt-</span> <span style='color:var(--c-white)'>(${state.player.gold >= 0 ? 'PAID!' : Math.abs(state.player.gold) + ' remaining'}).</span><br>
             <span style='color:var(--c-green)'>6. Find ${getLevelName(state.level + 1)}-</span> <span style='color:var(--c-white)'>(Exit to the next level).</span>
         `;
+        // NPC Quest display
+        if (state.npcQuest && state.npcQuest.active && state.npcQuest.level === state.level) {
+            const qStatus = state.npcQuest.complete ? '<span style="color:#00CC55">COMPLETE!</span>' : `Find ${state.npcQuest.item}`;
+            details += `<br><span style='color:var(--c-purple)'>7. ${state.npcQuest.npcName}'s Request-</span> <span style='color:var(--c-white)'>(${qStatus}).</span>`;
+        }
         qText.innerHTML = details;
     }
     const questProg = document.getElementById('quest-progress');
@@ -361,6 +366,283 @@ crtContainer.addEventListener('mousemove', (e) => {
     }
 });
 
+// ============================================================
+// Lost NPC Quest Interaction
+// ============================================================
+function handleLostNPC(npc) {
+    if (npc.questComplete) {
+        showMessage(`${npc.name}: "Thank you again, brave adventurer!"`, { color: colors.cyan });
+        return;
+    }
+
+    if (!npc.questAccepted) {
+        // Offer quest
+        const dialogues = [
+            `Oh adventurer! Thank heavens! I've been stuck here for days. I'm searching for ${npc.questItem}. If you find it and bring it back, I have a reward for you. It's not much, but you'd really help me out!`,
+            `Please, adventurer! I've been lost in these depths for so long. I desperately need ${npc.questItem}. Find it for me and I'll reward you handsomely!`,
+            `Bless you, adventurer! I thought nobody would come. I need ${npc.questItem} — it's somewhere on this level. Bring it to me and I'll make it worth your while!`,
+        ];
+        const msg = dialogues[npc.npcLevel % dialogues.length];
+        showConfirm(`${npc.name}:\n\n"${msg}"\n\nAccept quest?`, () => {
+            npc.questAccepted = true;
+            state.npcQuest.active = true;
+            showMessage(`Quest accepted: Find ${npc.questItem}!`, { color: colors.yellow });
+            if (audioCtx) playSound('powerup');
+
+            // Spawn quest item on the map now
+            const map = state.map;
+            const W = map[0].length;
+            const H = map.length;
+            for (let attempts = 0; attempts < 200; attempts++) {
+                const ix = Math.floor(Math.random() * (W - 2)) + 1;
+                const iy = Math.floor(Math.random() * (H - 2)) + 1;
+                if (map[iy][ix] !== 0) continue;
+                const distNpc = Math.abs(ix - npc.x) + Math.abs(iy - npc.y);
+                const distPlayer = Math.abs(ix - state.player.x) + Math.abs(iy - state.player.y);
+                if (distNpc < 5 || distPlayer < 3) continue;
+                if (state.items.some(i => i.x === ix && i.y === iy)) continue;
+                state.items.push({ x: ix, y: iy, type: 'quest_item', name: npc.questItem });
+                break;
+            }
+
+            updateUIState();
+            render();
+        });
+    } else {
+        // Quest accepted — check if player has the item
+        const itemIdx = state.inventory.indexOf(npc.questItem);
+        if (itemIdx >= 0) {
+            // Complete quest!
+            state.inventory.splice(itemIdx, 1);
+            npc.questComplete = true;
+            state.npcQuest.complete = true;
+            state.usedQuestItems.push(npc.questItem);
+
+            // Rewards
+            const goldReward = state.level * 20;
+            state.player.gold += goldReward;
+            state.inventory.push('Health Potion');
+
+            // Random weapon or armor from this level or below
+            const rewardLevel = Math.floor(Math.random() * state.level);
+            if (Math.random() < 0.5 && LEVEL_WEAPONS[rewardLevel]) {
+                state.inventory.push(LEVEL_WEAPONS[rewardLevel].name);
+                showMessage(`Quest complete! +${goldReward}g +Potion +${LEVEL_WEAPONS[rewardLevel].name}!`, { color: colors.green });
+            } else if (LEVEL_ARMOR[rewardLevel]) {
+                state.inventory.push(LEVEL_ARMOR[rewardLevel].name);
+                showMessage(`Quest complete! +${goldReward}g +Potion +${LEVEL_ARMOR[rewardLevel].name}!`, { color: colors.green });
+            } else {
+                showMessage(`Quest complete! +${goldReward}g +Potion!`, { color: colors.green });
+            }
+
+            if (audioCtx) playSound('powerup');
+            checkGoldDebt();
+            updateUIState();
+        } else {
+            showMessage(`${npc.name}: "Have you found ${npc.questItem} yet? Please hurry!"`, { color: colors.yellow });
+        }
+    }
+}
+
+// ============================================================
+// Shadow Merchant Shop
+// ============================================================
+let shopMode = 'buy'; // 'buy' or 'sell'
+let shopMusicPlaying = false;
+
+function openShop() {
+    const overlay = document.getElementById('shop-overlay');
+    overlay.classList.remove('hidden');
+    shopMode = 'buy';
+    renderShopItems();
+    // Play shop music
+    if (typeof playShopMusic === 'function') playShopMusic();
+    shopMusicPlaying = true;
+}
+
+function closeShop() {
+    document.getElementById('shop-overlay').classList.add('hidden');
+    if (shopMusicPlaying && typeof playGameMusic === 'function') {
+        playGameMusic();
+        shopMusicPlaying = false;
+    }
+}
+
+function renderShopItems() {
+    const list = document.getElementById('shop-item-list');
+    const goldDisplay = document.getElementById('shop-gold');
+    goldDisplay.innerText = `Gold: ${state.player.gold}`;
+
+    // Update tab styles
+    document.getElementById('shop-tab-buy').classList.toggle('active', shopMode === 'buy');
+    document.getElementById('shop-tab-sell').classList.toggle('active', shopMode === 'sell');
+
+    list.innerHTML = '';
+
+    if (shopMode === 'buy') {
+        // Weapons levels 1-9 (levels 7-9 cost 5x more)
+        for (let i = 0; i < 9; i++) {
+            const w = LEVEL_WEAPONS[i];
+            const basePrice = (i + 1) * 20;
+            const price = (i >= 6) ? Math.floor(basePrice * 2.5) : basePrice;
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.innerHTML = `
+                <span class="shop-item-name">${w.name}</span>
+                <span class="shop-item-stats">ATK +${w.attackBonus}</span>
+                <span class="shop-item-price">${price}g</span>
+                <button class="shop-buy-btn" onclick="shopBuy('${w.name}', ${price})">BUY</button>
+            `;
+            list.appendChild(div);
+        }
+        // Armor levels 1-9 (levels 7-9 cost 5x more)
+        for (let i = 0; i < 9; i++) {
+            const a = LEVEL_ARMOR[i];
+            const basePrice = (i + 1) * 20;
+            const price = (i >= 6) ? Math.floor(basePrice * 2.5) : basePrice;
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.innerHTML = `
+                <span class="shop-item-name">${a.name}</span>
+                <span class="shop-item-stats">DEF +${a.defenseBonus}</span>
+                <span class="shop-item-price">${price}g</span>
+                <button class="shop-buy-btn" onclick="shopBuy('${a.name}', ${price})">BUY</button>
+            `;
+            list.appendChild(div);
+        }
+        // Health Potions
+        const div = document.createElement('div');
+        div.className = 'shop-item';
+        div.innerHTML = `
+            <span class="shop-item-name">Health Potion</span>
+            <span class="shop-item-stats">Heals 50% HP</span>
+            <span class="shop-item-price">20g</span>
+            <button class="shop-buy-btn" onclick="shopBuy('Health Potion', 20)">BUY</button>
+        `;
+        list.appendChild(div);
+    } else {
+        // Sell mode — show player inventory only (not equipped items)
+        if (state.inventory.length === 0) {
+            list.innerHTML = '<div style="color:#666; font-size:7px; padding:10px; text-align:center;">Nothing to sell.</div>';
+            return;
+        }
+
+        // Show equipped items as info only (no sell button)
+        if (state.hands.right) {
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.style.opacity = '0.5';
+            div.innerHTML = `<span class="shop-item-name">${state.hands.right} [Equipped R]</span><span class="shop-item-stats" style="color:#FF7777;">Unequip to sell</span>`;
+            list.appendChild(div);
+        }
+        if (state.hands.left) {
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.style.opacity = '0.5';
+            div.innerHTML = `<span class="shop-item-name">${state.hands.left} [Equipped L]</span><span class="shop-item-stats" style="color:#FF7777;">Unequip to sell</span>`;
+            list.appendChild(div);
+        }
+        if (state.armorSlot) {
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.style.opacity = '0.5';
+            div.innerHTML = `<span class="shop-item-name">${state.armorSlot} [Worn]</span><span class="shop-item-stats" style="color:#FF7777;">Unequip to sell</span>`;
+            list.appendChild(div);
+        }
+
+        if (state.inventory.length === 0) {
+            // Only equipped items shown above, nothing sellable
+            return;
+        }
+
+        // Inventory items
+        for (let i = 0; i < state.inventory.length; i++) {
+            const item = state.inventory[i];
+            if (item === 'Gold Key' || item === 'Black Key') continue;
+
+            let stats = '';
+            let price = 10;
+            const wIdx = LEVEL_WEAPONS.findIndex(w => w.name === item);
+            const aIdx = LEVEL_ARMOR.findIndex(a => a.name === item);
+            if (wIdx >= 0) {
+                stats = `ATK +${LEVEL_WEAPONS[wIdx].attackBonus}`;
+                price = Math.floor((wIdx + 1) * 20 * 0.6);
+            } else if (aIdx >= 0) {
+                stats = `DEF +${LEVEL_ARMOR[aIdx].defenseBonus}`;
+                price = Math.floor((aIdx + 1) * 20 * 0.6);
+            } else if (item === 'Health Potion') {
+                stats = 'Heals 50% HP';
+                price = 10;
+            } else if (item === 'Super Potion') {
+                stats = 'Full heal';
+                price = 25;
+            }
+
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.innerHTML = `
+                <span class="shop-item-name">${item}</span>
+                <span class="shop-item-stats">${stats}</span>
+                <span class="shop-item-price">${price}g</span>
+                <button class="shop-sell-btn" onclick="shopSellInventory(${i}, ${price})">SELL</button>
+            `;
+            list.appendChild(div);
+        }
+    }
+}
+
+window.shopBuy = function(itemName, price) {
+    // Can't spend more than you've earned — gold can't go below -2500 (starting debt)
+    const availableGold = state.player.gold - (-2500); // how much above starting debt
+    if (availableGold < price) {
+        showMessage("You can't afford that! Earn more gold first.", { color: colors.red });
+        return;
+    }
+    state.player.gold -= price;
+    state.inventory.push(itemName);
+    showMessage(`Bought ${itemName}!`, { color: colors.green });
+    if (audioCtx) playSound('powerup');
+    checkGoldDebt();
+    updateUIState();
+    renderShopItems();
+};
+
+window.shopSellInventory = function(idx, price) {
+    const item = state.inventory[idx];
+    state.inventory.splice(idx, 1);
+    state.player.gold += price;
+    showMessage(`Sold ${item} for ${price}g`, { color: colors.yellow });
+    if (audioCtx) playSound('hit');
+    checkGoldDebt();
+    updateUIState();
+    renderShopItems();
+};
+
+window.shopSellEquipped = function(hand, price) {
+    const item = state.hands[hand];
+    state.hands[hand] = null;
+    state.player.gold += price;
+    showMessage(`Sold ${item} for ${price}g`, { color: colors.yellow });
+    if (audioCtx) playSound('hit');
+    calcPlayerAttack();
+    checkGoldDebt();
+    updateUIState();
+    renderShopItems();
+};
+
+window.shopSellArmor = function(price) {
+    const item = state.armorSlot;
+    state.armorSlot = null;
+    state.player.gold += price;
+    showMessage(`Sold ${item} for ${price}g`, { color: colors.yellow });
+    if (audioCtx) playSound('hit');
+    calcPlayerDefense();
+    checkGoldDebt();
+    updateUIState();
+    renderShopItems();
+};
+
+// ============================================================
 // Depths Map — illustrated map with level markers
 let depthsMapZoom = 1.5;
 let depthsMapScrollY = 0;

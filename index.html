@@ -7,7 +7,7 @@
     <title>The Deepest Depths</title>
     <!-- C64 Style Pixel Font -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=99">
+    <link rel="stylesheet" href="style.css?v=111">
 </head>
 
 <body>
@@ -247,6 +247,21 @@
             </div>
         </div>
 
+        <!-- Shop Overlay -->
+        <div id="shop-overlay" class="hidden">
+            <div id="shop-box">
+                <h2 style="color:#CC44CC; font-size:11px; margin:0 0 8px 0;">THE SHADOW MERCHANT</h2>
+                <p style="color:#999; font-size:7px; margin:0 0 8px 0;">Buy items to gear up. Sell items to reduce your debt.</p>
+                <div id="shop-tabs" style="display:flex; gap:5px; margin-bottom:8px;">
+                    <button class="splash-btn shop-tab active" id="shop-tab-buy" style="flex:1; font-size:8px; padding:4px;">BUY</button>
+                    <button class="splash-btn shop-tab" id="shop-tab-sell" style="flex:1; font-size:8px; padding:4px;">SELL</button>
+                </div>
+                <div id="shop-gold" style="color:#EEEE77; font-size:8px; margin-bottom:6px;">Gold: 0</div>
+                <div id="shop-item-list" style="max-height:280px; overflow-y:auto; border:1px solid #333; padding:4px;"></div>
+                <button class="splash-btn" id="shop-close" style="width:100%; font-size:9px; margin-top:8px;">LEAVE SHOP</button>
+            </div>
+        </div>
+
         <!-- Depths Map Overlay -->
         <div id="depths-map-overlay" class="hidden">
             <div id="depths-map-box">
@@ -310,15 +325,15 @@
     </div>
 
     <!-- game.js first: defines all globals (state, colors, ctx, audio, assets, constants) -->
-    <script src="game.js?v=99"></script>
+    <script src="game.js?v=111"></script>
     <!-- Module scripts: order doesn't matter as they only define functions -->
-    <script src="renderer.js?v=99"></script>
-    <script src="entities.js?v=99"></script>
-    <script src="effects.js?v=99"></script>
-    <script src="ui.js?v=99"></script>
-    <script src="combat.js?v=99"></script>
-    <script src="movement.js?v=99"></script>
-    <script src="input.js?v=99"></script>
+    <script src="renderer.js?v=111"></script>
+    <script src="entities.js?v=111"></script>
+    <script src="effects.js?v=111"></script>
+    <script src="ui.js?v=111"></script>
+    <script src="combat.js?v=111"></script>
+    <script src="movement.js?v=111"></script>
+    <script src="input.js?v=111"></script>
     <!-- Boot after all scripts loaded -->
     <script>
         if (document.readyState === 'loading') {

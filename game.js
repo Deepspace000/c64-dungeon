@@ -350,6 +350,71 @@ function playSound(type) {
     }
 }
 
+function playShopMusic() {
+    stopMusic();
+    if (!audioCtx) return;
+    currentMusicContext = audioCtx.currentTime;
+
+    // Jaunty evil market tune — minor key, bouncy rhythm
+    const tempo = 0.18;
+    // D minor pentatonic with chromatic evil flourishes
+    const melody = [294, 349, 392, 349, 294, 262, 294, 233, 262, 294, 349, 330, 294, 262, 233, 262];
+    const bass = [147, 147, 175, 175, 147, 147, 131, 131, 147, 147, 175, 175, 147, 147, 131, 131];
+
+    let t = audioCtx.currentTime + 0.1;
+
+    function scheduleLoop() {
+        if (!audioCtx || audioCtx.state === 'closed') return;
+
+        for (let i = 0; i < melody.length; i++) {
+            // Melody — plucky square wave
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = melody[i];
+            gain.gain.setValueAtTime(0.06, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + tempo * 0.8);
+            osc.connect(gain);
+            gain.connect(musicGainNode);
+            osc.start(t);
+            osc.stop(t + tempo);
+
+            // Bass — triangle
+            const bassOsc = audioCtx.createOscillator();
+            const bassGain = audioCtx.createGain();
+            bassOsc.type = 'triangle';
+            bassOsc.frequency.value = bass[i];
+            bassGain.gain.setValueAtTime(0.04, t);
+            bassGain.gain.exponentialRampToValueAtTime(0.001, t + tempo * 0.9);
+            bassOsc.connect(bassGain);
+            bassGain.connect(musicGainNode);
+            bassOsc.start(t);
+            bassOsc.stop(t + tempo);
+
+            // Percussion on beats 0, 4, 8, 12
+            if (i % 4 === 0) {
+                const noise = audioCtx.createOscillator();
+                const nGain = audioCtx.createGain();
+                noise.type = 'sawtooth';
+                noise.frequency.value = 80;
+                nGain.gain.setValueAtTime(0.03, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                noise.connect(nGain);
+                nGain.connect(sfxGainNode);
+                noise.start(t);
+                noise.stop(t + 0.06);
+            }
+
+            t += tempo;
+        }
+
+        // Loop
+        setTimeout(scheduleLoop, melody.length * tempo * 900);
+    }
+
+    scheduleLoop();
+}
+
 function playDeathMusic() {
     stopMusic();
     if (!audioCtx) return;
@@ -498,25 +563,28 @@ const LEVEL_ARMOR = [
     { name: "The Perfect Shiny Armor 2", defenseBonus: 240 }
 ];
 
+// BESTIARY — HP = (4 + level) × weapon_DMG. Bosses = 3× HP. Enemy level 1-5 scales ×0.6 to ×1.4.
 const BESTIARY = {
-    3: [{ name: "Mimic Chest", hp: 25, attack: 12 }],
-    4: [{ name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }],
-    5: [{ name: "Mimic Chest", hp: 25, attack: 12 }, { name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }, { name: "Wraith", hp: 20, attack: 15 }, { name: "Restless Zombie", hp: 30, attack: 12 }, { name: "Skrronzor the Level Boss", hp: 120, attack: 30, isBoss: true }],
-    6: [{ name: "Gargoyle", hp: 40, attack: 18 }, { name: "Blind Warden", hp: 50, attack: 22 }],
-    7: [{ name: "Ink Elemental", hp: 50, attack: 22 }, { name: "Ghostly Scribe", hp: 35, attack: 28 }],
-    8: [{ name: "Minotaur", hp: 70, attack: 28 }, { name: "Obsidian Golem", hp: 90, attack: 24 }],
-    9: [{ name: "Chasm Crawler", hp: 80, attack: 35 }, { name: "Echo Wraith", hp: 60, attack: 42 }],
-    10: [{ name: "Abyssal Knight", hp: 120, attack: 45 }, { name: "Throne Guard", hp: 100, attack: 40 }],
-    11: [{ name: "Deep Dweller", hp: 160, attack: 55 }],
-    12: [{ name: "Ruined Sentinel", hp: 200, attack: 70 }, { name: "Undead King", hp: 250, attack: 65 }],
-    13: [{ name: "Bloodbat", hp: 180, attack: 85 }, { name: "Bloodstone Golem", hp: 300, attack: 75 }],
-    14: [{ name: "Toxic Ooze", hp: 320, attack: 95 }, { name: "The Slime Lord", hp: 450, attack: 110 }],
-    15: [{ name: "Vault Guardian", hp: 500, attack: 130 }],
-    16: [{ name: "Rusted Automaton", hp: 450, attack: 150 }, { name: "Iron Giant", hp: 700, attack: 160 }],
-    17: [{ name: "Shadow Priest", hp: 600, attack: 190 }, { name: "Void Cultist", hp: 500, attack: 210 }],
-    18: [{ name: "Skeletal Wyrm", hp: 750, attack: 230 }, { name: "Bone Dragon", hp: 1000, attack: 250 }],
-    19: [{ name: "Whispering Terror", hp: 900, attack: 280 }, { name: "Null Entity", hp: 850, attack: 310 }],
-    20: [{ name: "The Depth Core", hp: 1500, attack: 400 }]
+    1: [{ name: "Skeleton", hp: 10, attack: 4 }, { name: "Wraith", hp: 10, attack: 5 }],
+    2: [{ name: "Skeleton", hp: 24, attack: 6 }, { name: "Wraith", hp: 24, attack: 7 }, { name: "Cloaked Skeleton", hp: 24, attack: 8 }],
+    3: [{ name: "Mimic Chest", hp: 56, attack: 10 }, { name: "Cloaked Skeleton", hp: 56, attack: 10 }],
+    4: [{ name: "Cave Slime", hp: 96, attack: 14 }, { name: "Giant Rat", hp: 96, attack: 16 }],
+    5: [{ name: "Mimic Chest", hp: 144, attack: 18 }, { name: "Cave Slime", hp: 144, attack: 16 }, { name: "Giant Rat", hp: 144, attack: 18 }, { name: "Wraith", hp: 144, attack: 17 }, { name: "Restless Zombie", hp: 144, attack: 16 }, { name: "Skrronzor the Level Boss", hp: 432, attack: 35, isBoss: true }],
+    6: [{ name: "Gargoyle", hp: 220, attack: 24 }, { name: "Blind Warden", hp: 220, attack: 26 }],
+    7: [{ name: "Ink Elemental", hp: 308, attack: 28 }, { name: "Ghostly Scribe", hp: 308, attack: 30 }],
+    8: [{ name: "Minotaur", hp: 432, attack: 34 }, { name: "Obsidian Golem", hp: 432, attack: 32 }],
+    9: [{ name: "Chasm Crawler", hp: 572, attack: 38 }, { name: "Echo Wraith", hp: 572, attack: 40 }],
+    10: [{ name: "Abyssal Knight", hp: 840, attack: 48 }, { name: "Throne Guard", hp: 840, attack: 45 }, { name: "Abyssius, Lord of the Abyss", hp: 2520, attack: 95, isBoss: true }],
+    11: [{ name: "Deep Dweller", hp: 1200, attack: 58 }],
+    12: [{ name: "Ruined Sentinel", hp: 1600, attack: 68 }, { name: "Undead King", hp: 1600, attack: 72 }],
+    13: [{ name: "Bloodbat", hp: 2210, attack: 80 }, { name: "Bloodstone Golem", hp: 2210, attack: 78 }],
+    14: [{ name: "Toxic Ooze", hp: 2700, attack: 92 }, { name: "The Slime Lord", hp: 2700, attack: 95 }],
+    15: [{ name: "Vault Guardian", hp: 3800, attack: 105 }, { name: "The Vault Keeper", hp: 11400, attack: 190, isBoss: true }],
+    16: [{ name: "Rusted Automaton", hp: 5000, attack: 120 }, { name: "Iron Giant", hp: 5000, attack: 125 }],
+    17: [{ name: "Shadow Priest", hp: 6510, attack: 140 }, { name: "Void Cultist", hp: 6510, attack: 145 }],
+    18: [{ name: "Skeletal Wyrm", hp: 8360, attack: 165 }, { name: "Bone Dragon", hp: 8360, attack: 170 }],
+    19: [{ name: "Whispering Terror", hp: 10580, attack: 190 }, { name: "Null Entity", hp: 10580, attack: 195 }],
+    20: [{ name: "The Depth Core", hp: 40320, attack: 380, isBoss: true }]
 };
 
 // ============================================================
@@ -530,7 +598,7 @@ const state = {
     player: {
         x: 1, y: 1, dir: 0,
         hp: 20, maxHp: 20,
-        gold: -1000,
+        gold: -2500,
         attack: 1,
         baseDefense: 0,
         armorDefense: 1,
@@ -542,6 +610,9 @@ const state = {
     inventory: ['Rusty Sword', 'Health Potion'],
     hands: { left: null, right: null },
     armorSlot: null,
+    npcQuest: { active: false, item: '', npcX: 0, npcY: 0, level: 0, complete: false },
+    usedQuestItems: [],
+    questItemPool: [],
     animations: [],
     visibleSecretWalls: [],
     revealedSecrets: {},
@@ -637,6 +708,19 @@ throneGuardImg.onload = () => { throneGuardLoaded = true; }; throneGuardImg.src 
 
 const abyssiusImg = new Image(); let abyssiusLoaded = false;
 abyssiusImg.onload = () => { abyssiusLoaded = true; }; abyssiusImg.src = "abyssius.png?v=1";
+
+const shadowMerchantImg = new Image(); let shadowMerchantLoaded = false;
+shadowMerchantImg.onload = () => { shadowMerchantLoaded = true; }; shadowMerchantImg.src = "shadow_merchant.png?v=1";
+
+// Lost NPC images — one per even level
+const lostNpcImgs = {};
+const lostNpcLoaded = {};
+for (const lvl of [2,4,6,8,10,12,14,16,18,20]) {
+    lostNpcImgs[lvl] = new Image();
+    lostNpcLoaded[lvl] = false;
+    lostNpcImgs[lvl].onload = () => { lostNpcLoaded[lvl] = true; };
+    lostNpcImgs[lvl].src = `lost_npc_lvl_${lvl}.png?v=1`;
+}
 
 const deepDwellerImg = new Image(); let deepDwellerLoaded = false;
 deepDwellerImg.onload = () => { deepDwellerLoaded = true; }; deepDwellerImg.src = "deep_dweller.png?v=2";
@@ -818,19 +902,20 @@ function generateMap(W, H) {
                     if (attempts > 80 && !isHighLevel) validPlacement = true;
 
                     if (validPlacement) {
-                        const bestiaryFloor = BESTIARY[state.level];
-                        const monsterDef = bestiaryFloor?.find(m => m.name === type);
-                        let hp = monsterDef
-                            ? Math.ceil(monsterDef.hp * (0.9 + lvl * 0.1))
-                            : 10 + (lvl * 4);
-
-                        if (!monsterDef) {
-                            if (type === 'Cloaked Skeleton') hp = 10 + (lvl * 5);
-                            else if (type === 'Ghoul' || type === 'Spider') hp = Math.ceil((10 + (lvl * 5)) * 1.1);
+                        // Look up creature stats from any BESTIARY level
+                        let monsterDef = null;
+                        for (const floorEntries of Object.values(BESTIARY)) {
+                            const found = floorEntries.find(m => m.name === type && !m.isBoss);
+                            if (found) { monsterDef = found; break; }
                         }
+                        // Scale HP by enemy level: lvl1=60%, lvl2=80%, lvl3=100%, lvl4=120%, lvl5=140%
+                        let hp = monsterDef
+                            ? Math.ceil(monsterDef.hp * (0.4 + lvl * 0.2))
+                            : 10 + (lvl * 4);
+                        let atk = monsterDef ? monsterDef.attack : 4 + lvl * 2;
 
                         const extraProps = type === 'Mimic Chest' ? { disguised: true } : {};
-                        state.enemies.push({ x, y, hp: hp, maxHp: hp, type: type, level: lvl, state: 'idle', name: type, ...extraProps });
+                        state.enemies.push({ x, y, hp: hp, maxHp: hp, attack: atk, type: type, level: lvl, state: 'idle', name: type, ...extraProps });
                         return true;
                     }
                 }
@@ -1246,6 +1331,35 @@ function generateMap(W, H) {
                 opacity: 0.04 + Math.random() * 0.08
             });
         }
+
+        // Shadow Merchant — embedded in a wall adjacent to open floor
+        for (let attempts = 0; attempts < 200; attempts++) {
+            const mx = Math.floor(Math.random() * (W - 4)) + 2;
+            const my = Math.floor(Math.random() * (H - 4)) + 2;
+            if (map[my][mx] !== 1) continue; // Must be a wall
+            const distToPlayer = Math.abs(mx - state.player.x) + Math.abs(my - state.player.y);
+            if (distToPlayer < 5) continue;
+            // Check adjacent floor tile exists
+            const dirs = [{dx:0,dy:-1},{dx:0,dy:1},{dx:-1,dy:0},{dx:1,dy:0}];
+            let hasFloor = false;
+            for (const d of dirs) {
+                if (map[my + d.dy] && map[my + d.dy][mx + d.dx] === 0) { hasFloor = true; break; }
+            }
+            if (!hasFloor) continue;
+            // Check enough open space around (room area)
+            let open = 0;
+            for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                    if (map[my + dy] && map[my + dy][mx + dx] === 0) open++;
+                }
+            }
+            if (open < 8) continue;
+            // Place merchant
+            state.items.push({ x: mx, y: my, type: 'shopkeeper', name: 'The Shadow Merchant', persistent: true, isNPC: true });
+            // Clear enemies within 3 tiles
+            state.enemies = state.enemies.filter(e => Math.abs(e.x - mx) + Math.abs(e.y - my) > 3);
+            break;
+        }
     }
 
     // Level 9 - Chasm of Echoes: windy brown mist
@@ -1454,6 +1568,14 @@ function init() {
     saveCancelBtn.addEventListener('click', () => {
         saveOverlay.classList.add('hidden');
     });
+
+    // Shop tab buttons
+    const shopTabBuy = document.getElementById('shop-tab-buy');
+    const shopTabSell = document.getElementById('shop-tab-sell');
+    const shopCloseBtn = document.getElementById('shop-close');
+    if (shopTabBuy) shopTabBuy.addEventListener('click', () => { shopMode = 'buy'; renderShopItems(); });
+    if (shopTabSell) shopTabSell.addEventListener('click', () => { shopMode = 'sell'; renderShopItems(); });
+    if (shopCloseBtn) shopCloseBtn.addEventListener('click', () => closeShop());
 
     // Depths map close on click
     const depthsMapOverlay = document.getElementById('depths-map-overlay');
@@ -1748,7 +1870,81 @@ function init() {
 // ============================================================
 // Boot (called from index.html after all scripts are loaded)
 // ============================================================
+// Quest item pool — shuffled once at game start
+const QUEST_ITEM_POOL = ['a Pet Cat', 'a Pet Dog', 'a Pet Duck', 'a Pet Frog', 'a Comb', 'a Jewel', 'a Lost Child', 'a Medallion', 'a Lost Goat', 'a Cow'];
+const NPC_LEVELS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
+const NPC_NAMES = ['Elara the Wanderer', 'Old Barnaby', 'Sister Mira', 'Gruntle the Miner', 'Whisper the Thief', 'Dame Rosalind', 'Patches the Hermit', 'Brother Aldric', 'Nyx the Shadow', 'The Last Scholar'];
+
+function initQuestPool() {
+    if (state.questItemPool.length === 0) {
+        state.questItemPool = [...QUEST_ITEM_POOL];
+        // Fisher-Yates shuffle
+        for (let i = state.questItemPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [state.questItemPool[i], state.questItemPool[j]] = [state.questItemPool[j], state.questItemPool[i]];
+        }
+    }
+}
+
+function spawnLostNPC(map, W, H) {
+    const lvl = state.level;
+    const npcIdx = NPC_LEVELS.indexOf(lvl);
+    if (npcIdx === -1) return; // Not an NPC level
+
+    initQuestPool();
+
+    // Get next unused quest item
+    const questItem = state.questItemPool[npcIdx];
+    if (!questItem || state.usedQuestItems.includes(questItem)) return;
+
+    const npcName = NPC_NAMES[npcIdx];
+
+    // Find a wall tile adjacent to floor (dead-end preferred)
+    let bestSpot = null;
+    let bestOpenness = 999;
+    for (let attempts = 0; attempts < 300; attempts++) {
+        const mx = Math.floor(Math.random() * (W - 4)) + 2;
+        const my = Math.floor(Math.random() * (H - 4)) + 2;
+        if (map[my][mx] !== 1) continue; // Must be wall
+        const dist = Math.abs(mx - state.player.x) + Math.abs(my - state.player.y);
+        if (dist < 5) continue;
+        // Must have exactly 1 adjacent floor tile (dead-end wall)
+        let adjFloors = 0;
+        const dirs = [{dx:0,dy:-1},{dx:0,dy:1},{dx:-1,dy:0},{dx:1,dy:0}];
+        for (const d of dirs) {
+            if (map[my + d.dy] && map[my + d.dy][mx + d.dx] === 0) adjFloors++;
+        }
+        if (adjFloors >= 1 && adjFloors <= 2) {
+            // Prefer spots with fewer adjacent floors (more like end of passage)
+            if (adjFloors < bestOpenness || !bestSpot) {
+                bestSpot = { x: mx, y: my };
+                bestOpenness = adjFloors;
+            }
+            if (adjFloors === 1 && attempts > 50) break; // Found ideal dead-end
+        }
+    }
+
+    if (!bestSpot) return;
+
+    // Place NPC
+    state.items.push({
+        x: bestSpot.x, y: bestSpot.y,
+        type: 'lost_npc', name: npcName,
+        persistent: true, isNPC: true,
+        questItem: questItem,
+        questAccepted: false, questComplete: false,
+        npcLevel: lvl
+    });
+
+    // Clear enemies near NPC
+    state.enemies = state.enemies.filter(e => Math.abs(e.x - bestSpot.x) + Math.abs(e.y - bestSpot.y) > 3);
+
+    // Quest item will be spawned when quest is accepted (not before)
+    state.npcQuest = { active: false, item: questItem, npcX: bestSpot.x, npcY: bestSpot.y, level: lvl, complete: false, npcName: npcName, mapW: W, mapH: H };
+}
+
 function boot() {
     state.map = generateMap(27, 27);
+    spawnLostNPC(state.map, state.map[0].length, state.map.length);
     init();
 }

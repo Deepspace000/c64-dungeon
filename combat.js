@@ -124,7 +124,7 @@ function attackFront() {
                 showMessage(diffMsg, { color: diffColor, flash: true });
             }
 
-            if (Math.random() < 0.2) {
+            if (Math.random() < 0.1) {
                 showMessage("MISS");
                 playSound('miss');
             } else {
@@ -139,8 +139,9 @@ function attackFront() {
                     state.animations.push({ type: 'swipe', timer: 15, color: colors.cyan });
                 }
 
-                // Main hand uses the best weapon's attackBonus, offhand does 50% of the weaker weapon
-                let playerDmg = state.player.attack * 2;
+                // Unarmed = weak punch, equipped = weapon damage
+                const isUnarmed = !state.hands.left && !state.hands.right;
+                let playerDmg = isUnarmed ? 1 : state.player.attack * 2;
                 let offHandDmg = 0;
                 if (isDualWielding) {
                     const offHandBonus = Math.min(leftWeapon.attackBonus, rightWeapon.attackBonus);
@@ -148,13 +149,7 @@ function attackFront() {
                 }
                 let totalDmg = playerDmg + offHandDmg;
 
-                let dmgReduction = Math.max(0, e.level - 1);
-                let finalDmg = Math.max(1, totalDmg - dmgReduction);
-                finalDmg = Math.ceil(finalDmg * 0.8);
-
-                if (e.level >= 4) {
-                    finalDmg = Math.ceil(finalDmg * 1.15);
-                }
+                let finalDmg = Math.max(1, totalDmg);
 
                 e.hp -= finalDmg;
 
@@ -171,7 +166,7 @@ function attackFront() {
                     const droppedGold = Math.floor(Math.random() * 15) + 1;
                     state.items.push({ x: e.x, y: e.y, type: 'gold', amount: droppedGold });
 
-                    if (e.level === 3 || e.level === 4) {
+                    if (e.level >= 3 && e.level <= 5) {
                         state.items.push({ x: e.x, y: e.y, type: 'Health Potion', name: 'Health Potion' });
                     }
 
@@ -203,22 +198,10 @@ function attackFront() {
                     } else {
                         let finalEnemyDmg;
 
-                        const bEntry = Object.values(BESTIARY).flat().find(m => m.name === e.type);
-                        if (bEntry) {
-                            const variance = 0.7 + Math.random() * 0.6;
-                            finalEnemyDmg = Math.max(1, Math.ceil(bEntry.attack * variance * 0.15));
-                        } else if (e.name === 'Cloaked Skeleton') {
-                            finalEnemyDmg = Math.floor(Math.random() * (2 + e.level)) + 2;
-                        } else if (e.name === 'Ghoul' || e.name === 'Spider') {
-                            let base = Math.floor(Math.random() * (2 + e.level)) + 2;
-                            finalEnemyDmg = Math.ceil(base * 1.1);
-                        } else {
-                            const baseDmg = state.player.attack === 2 ? 3 : 2;
-                            const levelBonus = e.level - 1;
-                            finalEnemyDmg = Math.max(1, Math.floor(Math.random() * (baseDmg + levelBonus)) + 1);
-                        }
-
-                        finalEnemyDmg = Math.ceil(finalEnemyDmg * 1.2);
+                        // Use the enemy's own attack stat (set at spawn)
+                        const eAtk = e.attack || 4;
+                        const variance = 0.7 + Math.random() * 0.6;
+                        finalEnemyDmg = Math.max(1, Math.ceil(eAtk * variance * 0.15));
                         let mitigatedDmg = Math.max(1, finalEnemyDmg - state.player.armorDefense);
                         takeDamage(mitigatedDmg);
                         render();

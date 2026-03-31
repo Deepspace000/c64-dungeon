@@ -23,6 +23,19 @@ function bindControls() {
         const ty = state.player.y + d.dy;
         const targetCell = getCell(tx, ty);
 
+        // Check for NPCs in the tile we're facing
+        const npcInFront = state.items.find(i => i.x === tx && i.y === ty && i.isNPC);
+        if (npcInFront) {
+            if (npcInFront.type === 'shopkeeper') {
+                showMessage("The Shadow Merchant beckons...", { color: colors.purple });
+                if (audioCtx) playSound('powerup');
+                setTimeout(() => openShop(), 300);
+            } else if (npcInFront.type === 'lost_npc') {
+                handleLostNPC(npcInFront);
+            }
+            return;
+        }
+
         let enemyInFront = false;
         for (let e of state.enemies) {
             if (e.x === tx && e.y === ty && e.state !== 'dead') {
@@ -74,6 +87,15 @@ function bindControls() {
             tutOverlay.querySelector('#tutorial-close-btn')?.click();
             e.preventDefault();
             return;
+        }
+
+        // ESC — Close shop if open
+        if (e.code === 'Escape') {
+            const shopOverlay = document.getElementById('shop-overlay');
+            if (shopOverlay && !shopOverlay.classList.contains('hidden')) {
+                closeShop();
+                return;
+            }
         }
 
         // M — Depths Map

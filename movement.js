@@ -20,7 +20,16 @@ function checkAutoLoot() {
     for (let i = state.items.length - 1; i >= 0; i--) {
         const item = state.items[i];
         if (item.x === px && item.y === py) {
-            if (item.type === 'fountain') {
+            if (item.type === 'lost_npc') {
+                continue; // NPC stays, interaction handled by facing
+            } else if (item.type === 'quest_item') {
+                state.inventory.push(item.name);
+                showMessage(`Found ${item.name}! Return it to the NPC.`, { color: colors.yellow });
+                if (audioCtx) playSound('powerup');
+                state.items.splice(i, 1);
+                updateUIState();
+                continue;
+            } else if (item.type === 'fountain') {
                 if (!item.used) {
                     item.used = true;
                     state.player.hp = state.player.maxHp;
@@ -169,7 +178,18 @@ function handleMove(nx, ny) {
 function nextLevel() {
     document.getElementById('transition-screen').classList.add('hidden');
 
-    state.inventory = state.inventory.filter(item => item !== 'Gold Key' && item !== 'Black Key');
+    // Remove keys and unfinished quest items
+    state.inventory = state.inventory.filter(item => {
+        if (item === 'Gold Key' || item === 'Black Key') return false;
+        // Remove quest items from previous level if quest wasn't completed
+        if (state.npcQuest && state.npcQuest.active && !state.npcQuest.complete && item === state.npcQuest.item) return false;
+        return true;
+    });
+
+    // Clear NPC quest if not completed
+    if (state.npcQuest && state.npcQuest.active && !state.npcQuest.complete) {
+        state.npcQuest = { active: false, item: '', npcX: 0, npcY: 0, level: 0, complete: false };
+    }
 
     let w = 27, h = 27;
     if (state.level === 5) {
@@ -182,6 +202,7 @@ function nextLevel() {
     }
 
     state.map = generateMap(w, h);
+    if (typeof spawnLostNPC === 'function') spawnLostNPC(state.map, w, h);
     state.appState = 'playing';
     playGameMusic();
     render();
@@ -200,7 +221,7 @@ window.warpToLevel = function (targetLevel) {
     state.level = targetLevel;
     state.player.hp = 20;
     state.player.maxHp = 20;
-    state.player.gold = -1000;
+    state.player.gold = -2500;
     state.debtPaidOff = false;
     state.inventory = ['Rusty Sword', 'Health Potion'];
     state.hands.left = null;
@@ -217,6 +238,7 @@ window.warpToLevel = function (targetLevel) {
     }
 
     state.map = generateMap(w, h);
+    if (typeof spawnLostNPC === 'function') spawnLostNPC(state.map, w, h);
     state.appState = 'playing';
     playGameMusic();
     updateUIState();

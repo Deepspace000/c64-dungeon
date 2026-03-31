@@ -159,6 +159,15 @@ function drawMinimap() {
                 if (item.type === 'fountain') {
                     minimapCtx.fillStyle = colors.cyan;
                     minimapCtx.fillRect(dx, dy, ts, ts);
+                } else if (item.type === 'lost_npc') {
+                    minimapCtx.fillStyle = colors.yellow;
+                    minimapCtx.fillRect(dx, dy, Math.max(ts, 3), Math.max(ts, 3));
+                } else if (item.type === 'quest_item') {
+                    minimapCtx.fillStyle = (Date.now() % 600 < 300) ? colors.yellow : colors.orange;
+                    minimapCtx.fillRect(dx, dy, ts, ts);
+                } else if (item.type === 'shopkeeper') {
+                    minimapCtx.fillStyle = colors.purple;
+                    minimapCtx.fillRect(dx, dy, Math.max(ts, 3), Math.max(ts, 3));
                 } else if (item.type === 'chest') {
                     minimapCtx.fillStyle = colors.yellow;
                     minimapCtx.fillRect(dx, dy, ts, ts);

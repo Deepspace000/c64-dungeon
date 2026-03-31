@@ -129,24 +129,28 @@ export const LEVEL_THEMES = {
 };
 
 export const BESTIARY = {
-    3: [{ name: "Mimic Chest", hp: 25, attack: 12 }],
-    4: [{ name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }],
-    5: [{ name: "Mimic Chest", hp: 25, attack: 12 }, { name: "Cave Slime", hp: 18, attack: 10 }, { name: "Giant Rat", hp: 12, attack: 12 }, { name: "Wraith", hp: 20, attack: 15 }, { name: "Restless Zombie", hp: 30, attack: 12 }, { name: "Skrronzor the Level Boss", hp: 120, attack: 30, isBoss: true }],
-    6: [{ name: "Gargoyle", hp: 50, attack: 20 }, { name: "Blind Warden", hp: 65, attack: 24 }],
-    7: [{ name: "Ink Elemental", hp: 50, attack: 22 }, { name: "Ghostly Scribe", hp: 40, attack: 28 }],
-    8: [{ name: "Minotaur", hp: 70, attack: 28 }, { name: "Obsidian Golem", hp: 90, attack: 24 }],
-    9: [{ name: "Chasm Crawler", hp: 80, attack: 35 }, { name: "Echo Wraith", hp: 60, attack: 42 }],
-    10: [{ name: "Abyssal Knight", hp: 120, attack: 45 }, { name: "Throne Guard", hp: 100, attack: 40 }, { name: "Abyssius, Lord of the Abyss", hp: 250, attack: 80, isBoss: true }],
-    11: [{ name: "Deep Dweller", hp: 160, attack: 55 }],
-    12: [{ name: "Ruined Sentinel", hp: 200, attack: 70 }, { name: "Undead King", hp: 250, attack: 65 }],
-    13: [{ name: "Bloodbat", hp: 180, attack: 85 }, { name: "Bloodstone Golem", hp: 300, attack: 75 }],
-    14: [{ name: "Toxic Ooze", hp: 320, attack: 95 }, { name: "The Slime Lord", hp: 450, attack: 110 }],
-    15: [{ name: "Vault Guardian", hp: 500, attack: 130 }],
-    16: [{ name: "Rusted Automaton", hp: 450, attack: 150 }, { name: "Iron Giant", hp: 700, attack: 160 }],
-    17: [{ name: "Shadow Priest", hp: 600, attack: 190 }, { name: "Void Cultist", hp: 500, attack: 210 }],
-    18: [{ name: "Skeletal Wyrm", hp: 750, attack: 230 }, { name: "Bone Dragon", hp: 1000, attack: 250 }],
-    19: [{ name: "Whispering Terror", hp: 900, attack: 280 }, { name: "Null Entity", hp: 850, attack: 310 }],
-    20: [{ name: "The Depth Core", hp: 1500, attack: 400 }]
+    // HP formula: (4 + level) × weapon_DMG × 2 (since playerDmg = atk × 2)
+    // Lv1: 5 hits × DMG 2 = 10 HP | Lv5: 9 hits × DMG 16 = 144 HP | Lv10: 14 hits × DMG 60 = 840 HP
+    1: [{ name: "Skeleton", hp: 10, attack: 4 }, { name: "Wraith", hp: 10, attack: 5 }],
+    2: [{ name: "Skeleton", hp: 24, attack: 6 }, { name: "Wraith", hp: 24, attack: 7 }, { name: "Cloaked Skeleton", hp: 24, attack: 8 }],
+    3: [{ name: "Mimic Chest", hp: 56, attack: 10 }, { name: "Cloaked Skeleton", hp: 56, attack: 10 }],
+    4: [{ name: "Cave Slime", hp: 96, attack: 14 }, { name: "Giant Rat", hp: 96, attack: 16 }],
+    5: [{ name: "Mimic Chest", hp: 144, attack: 18 }, { name: "Cave Slime", hp: 144, attack: 16 }, { name: "Giant Rat", hp: 144, attack: 18 }, { name: "Wraith", hp: 144, attack: 17 }, { name: "Restless Zombie", hp: 144, attack: 16 }, { name: "Skrronzor the Level Boss", hp: 432, attack: 35, isBoss: true }],
+    6: [{ name: "Gargoyle", hp: 220, attack: 24 }, { name: "Blind Warden", hp: 220, attack: 26 }],
+    7: [{ name: "Ink Elemental", hp: 308, attack: 28 }, { name: "Ghostly Scribe", hp: 308, attack: 30 }],
+    8: [{ name: "Minotaur", hp: 432, attack: 34 }, { name: "Obsidian Golem", hp: 432, attack: 32 }],
+    9: [{ name: "Chasm Crawler", hp: 572, attack: 38 }, { name: "Echo Wraith", hp: 572, attack: 40 }],
+    10: [{ name: "Abyssal Knight", hp: 840, attack: 48 }, { name: "Throne Guard", hp: 840, attack: 45 }, { name: "Abyssius, Lord of the Abyss", hp: 2520, attack: 95, isBoss: true }],
+    11: [{ name: "Deep Dweller", hp: 1200, attack: 58 }],
+    12: [{ name: "Ruined Sentinel", hp: 1600, attack: 68 }, { name: "Undead King", hp: 1600, attack: 72 }],
+    13: [{ name: "Bloodbat", hp: 2210, attack: 80 }, { name: "Bloodstone Golem", hp: 2210, attack: 78 }],
+    14: [{ name: "Toxic Ooze", hp: 2700, attack: 92 }, { name: "The Slime Lord", hp: 2700, attack: 95 }],
+    15: [{ name: "Vault Guardian", hp: 3800, attack: 105 }, { name: "The Vault Keeper", hp: 11400, attack: 190, isBoss: true }],
+    16: [{ name: "Rusted Automaton", hp: 5000, attack: 120 }, { name: "Iron Giant", hp: 5000, attack: 125 }],
+    17: [{ name: "Shadow Priest", hp: 6510, attack: 140 }, { name: "Void Cultist", hp: 6510, attack: 145 }],
+    18: [{ name: "Skeletal Wyrm", hp: 8360, attack: 165 }, { name: "Bone Dragon", hp: 8360, attack: 170 }],
+    19: [{ name: "Whispering Terror", hp: 10580, attack: 190 }, { name: "Null Entity", hp: 10580, attack: 195 }],
+    20: [{ name: "The Depth Core", hp: 40320, attack: 380, isBoss: true }]
 };
 
 export const state = {
