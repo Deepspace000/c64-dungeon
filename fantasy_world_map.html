@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>The Realm of Eldoria - Fantasy World Map</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;overflow:hidden;font-family:'Segoe UI',sans-serif;touch-action:none}
+canvas{display:block;cursor:grab}
+canvas:active{cursor:grabbing}
+#ui{position:fixed;top:10px;left:10px;z-index:10;color:#d4af37;font-size:14px;
+background:rgba(0,0,0,0.7);padding:10px 14px;border-radius:8px;border:1px solid #d4af37;
+pointer-events:none;max-width:300px}
+#tooltip{position:fixed;display:none;background:rgba(20,12,8,0.95);color:#f0e6d2;
+padding:10px 14px;border-radius:6px;border:1px solid #d4af37;font-size:13px;
+z-index:20;pointer-events:none;max-width:250px;box-shadow:0 4px 12px rgba(0,0,0,0.5)}
+#tooltip .tt-name{font-weight:bold;color:#d4af37;font-size:15px;margin-bottom:4px}
+#tooltip .tt-type{color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+#tooltip .tt-desc{margin-top:6px;font-size:12px;line-height:1.4;color:#ccc}
+#legend{position:fixed;bottom:10px;left:10px;z-index:10;background:rgba(0,0,0,0.8);
+padding:10px 14px;border-radius:8px;border:1px solid #555;color:#ccc;font-size:11px}
+#legend div{display:flex;align-items:center;margin:3px 0}
+#legend span{display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:8px;border:1px solid #555}
+#controls{position:fixed;bottom:10px;right:10px;z-index:10;display:flex;gap:6px}
+#controls button{background:rgba(0,0,0,0.8);color:#d4af37;border:1px solid #d4af37;
+width:40px;height:40px;border-radius:8px;font-size:20px;cursor:pointer}
+#controls button:active{background:#d4af37;color:#000}
+#search{position:fixed;top:10px;right:10px;z-index:10}
+#search input{background:rgba(0,0,0,0.8);color:#f0e6d2;border:1px solid #d4af37;
+padding:8px 12px;border-radius:8px;font-size:14px;width:200px;outline:none}
+#search input::placeholder{color:#666}
+#searchResults{background:rgba(0,0,0,0.9);border:1px solid #d4af37;border-top:none;
+border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;display:none}
+#searchResults div{padding:8px 12px;color:#f0e6d2;cursor:pointer;font-size:13px}
+#searchResults div:hover{background:rgba(212,175,55,0.2)}
+#minimap{position:fixed;bottom:60px;right:10px;z-index:10;border:2px solid #d4af37;
+border-radius:4px;background:#000;width:150px;height:120px}
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+<div id="ui">
+<strong>The Realm of Eldoria</strong><br>
+Scroll/Pinch to zoom · Drag to pan<br>
+<span id="coords"></span>
+</div>
+<div id="tooltip"><div class="tt-name"></div><div class="tt-type"></div><div class="tt-desc"></div></div>
+<div id="legend"></div>
+<div id="controls">
+<button id="zoomIn">+</button>
+<button id="zoomOut">−</button>
+<button id="resetBtn">⟲</button>
+</div>
+<div id="search">
+<input type="text" id="searchInput" placeholder="Search locations...">
+<div id="searchResults"></div>
+</div>
+<canvas id="minimap"></canvas>
+<script>
+// Simplex noise implementation
+const SimplexNoise=(function(){
+const F2=0.5*(Math.sqrt(3)-1),G2=(3-Math.sqrt(3))/6;
+const grad3=[[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
+function SN(seed){
+this.p=new Uint8Array(512);
+const p=new Uint8Array(256);
+for(let i=0;i<256;i++)p[i]=i;
+let s=seed||0;
+for(let i=255;i>0;i--){s=(s*16807+1)&0x7fffffff;const j=s%(i+1);[p[i],p[j]]=[p[j],p[i]]}
+for(let i=0;i<512;i++)this.p[i]=p[i&255];
+}
+SN.prototype.noise2D=function(x,y){
+const p=this.p;
+const s=(x+y)*F2;const i=Math.floor(x+s),j=Math.floor(y+s);
+const t=(i+j)*G2;const x0=x-(i-t),y0=y-(j-t);
+let i1,j1;if(x0>y0){i1=1;j1=0}else{i1=0;j1=1}
+const x1=x0-i1+G2,y1=y0-j1+G2,x2=x0-1+2*G2,y2=y0-1+2*G2;
+const ii=i&255,jj=j&255;
+const gi0=p[ii+p[jj]]%8,gi1=p[ii+i1+p[jj+j1]]%8,gi2=p[ii+1+p[jj+1]]%8;
+let n0=0,n1=0,n2=0;
+let t0=0.5-x0*x0-y0*y0;if(t0>0){t0*=t0;n0=t0*t0*(grad3[gi0][0]*x0+grad3[gi0][1]*y0)}
+let t1=0.5-x1*x1-y1*y1;if(t1>0){t1*=t1;n1=t1*t1*(grad3[gi1][0]*x1+grad3[gi1][1]*y1)}
+let t2=0.5-x2*x2-y2*y2;if(t2>0){t2*=t2;n2=t2*t2*(grad3[gi2][0]*x2+grad3[gi2][1]*y2)}
+return 70*(n0+n1+n2);
+};
+return SN;
+})();
+
+// ========== WORLD GENERATION ==========
+const WORLD_W=2400,WORLD_H=1800;
+const noise1=new SimplexNoise(42);
+const noise2=new SimplexNoise(137);
+const noise3=new SimplexNoise(256);
+const noise4=new SimplexNoise(789);
+const noise5=new SimplexNoise(1024);
+
+function fbm(nx,ny,noise,octaves,lac,gain){
+let v=0,amp=1,freq=1,max=0;
+for(let i=0;i<octaves;i++){v+=amp*noise.noise2D(nx*freq,ny*freq);max+=amp;amp*=gain;freq*=lac}
+return v/max;
+}
+
+function getElevation(x,y){
+const nx=x/WORLD_W-0.5,ny=y/WORLD_H-0.5;
+let e=0.5*fbm(nx*3,ny*3,noise1,6,2.0,0.5);
+e+=0.3*fbm(nx*6,ny*6,noise2,4,2.0,0.5);
+e+=0.15*fbm(nx*12,ny*12,noise3,3,2.0,0.5);
+// Island shaping - push edges down
+const dx=2*nx,dy=2*ny;
+const dist=Math.sqrt(dx*dx+dy*dy);
+e=e-0.3*dist*dist;
+// Add mountain ridges
+const ridge=Math.abs(fbm(nx*4,ny*4,noise4,4,2.0,0.5));
+e+=0.2*(1-ridge);
+return e;
+}
+
+function getMoisture(x,y){
+const nx=x/WORLD_W-0.5,ny=y/WORLD_H-0.5;
+return 0.5+0.5*fbm(nx*4+5,ny*4+5,noise5,4,2.0,0.5);
+}
+
+// Terrain types
+const TERRAINS={
+DEEP_OCEAN:{color:'#0a1628',name:'Deep Ocean'},
+OCEAN:{color:'#0f2744',name:'Ocean'},
+SHALLOW:{color:'#1a4a6e',name:'Shallow Water'},
+COAST:{color:'#2a6a8e',name:'Coastal Water'},
+BEACH:{color:'#c2b280',name:'Sandy Beach'},
+DESERT:{color:'#d4a843',name:'Desert'},
+ARID:{color:'#b8a050',name:'Arid Scrubland'},
+GRASSLAND:{color:'#5a8c3c',name:'Grassland'},
+PLAINS:{color:'#7ba854',name:'Rolling Plains'},
+FARMLAND:{color:'#8ab848',name:'Fertile Farmland'},
+FOREST:{color:'#2d5a1e',name:'Temperate Forest'},
+DENSE_FOREST:{color:'#1a4010',name:'Dense Forest'},
+PINE_FOREST:{color:'#1e4a2a',name:'Pine Forest'},
+SWAMP:{color:'#3a4a2a',name:'Swampland'},
+MARSH:{color:'#4a5a30',name:'Marshes'},
+JUNGLE:{color:'#1a5a10',name:'Tropical Jungle'},
+HILLS:{color:'#8a7a50',name:'Rolling Hills'},
+HIGHLANDS:{color:'#7a6a40',name:'Highlands'},
+MOUNTAIN:{color:'#6a6a6a',name:'Mountains'},
+HIGH_MOUNTAIN:{color:'#8a8a8a',name:'High Mountains'},
+SNOW_PEAK:{color:'#dde8ee',name:'Snow Peaks'},
+TUNDRA:{color:'#8a9a7a',name:'Tundra'},
+VOLCANIC:{color:'#4a2020',name:'Volcanic Wasteland'},
+};
+
+function getTerrain(e,m){
+if(e<-0.35)return TERRAINS.DEEP_OCEAN;
+if(e<-0.2)return TERRAINS.OCEAN;
+if(e<-0.1)return TERRAINS.SHALLOW;
+if(e<-0.05)return TERRAINS.COAST;
+if(e<0.0)return TERRAINS.BEACH;
+if(e<0.08){if(m<0.2)return TERRAINS.DESERT;if(m<0.35)return TERRAINS.ARID;if(m>0.7)return TERRAINS.SWAMP;return TERRAINS.GRASSLAND}
+if(e<0.18){if(m<0.2)return TERRAINS.DESERT;if(m<0.4)return TERRAINS.PLAINS;if(m>0.75)return TERRAINS.MARSH;return TERRAINS.FARMLAND}
+if(e<0.3){if(m<0.25)return TERRAINS.ARID;if(m<0.5)return TERRAINS.GRASSLAND;if(m>0.7)return TERRAINS.DENSE_FOREST;return TERRAINS.FOREST}
+if(e<0.4){if(m<0.3)return TERRAINS.HIGHLANDS;if(m>0.7)return TERRAINS.PINE_FOREST;return TERRAINS.HILLS}
+if(e<0.55)return TERRAINS.MOUNTAIN;
+if(e<0.7)return TERRAINS.HIGH_MOUNTAIN;
+return TERRAINS.SNOW_PEAK;
+}
+
+// Pre-generate terrain data at lower res for performance
+const TILE=4;
+const COLS=WORLD_W/TILE,ROWS=WORLD_H/TILE;
+const terrainGrid=new Array(COLS*ROWS);
+const elevGrid=new Float32Array(COLS*ROWS);
+const moistGrid=new Float32Array(COLS*ROWS);
+
+for(let y=0;y<ROWS;y++){
+for(let x=0;x<COLS;x++){
+const wx=x*TILE,wy=y*TILE;
+const e=getElevation(wx,wy);
+const m=getMoisture(wx,wy);
+const idx=y*COLS+x;
+elevGrid[idx]=e;
+moistGrid[idx]=m;
+terrainGrid[idx]=getTerrain(e,m);
+}}
+
+
+// ========== LOCATION GENERATION ==========
+const LOC_TYPES={
+CAPITAL:{icon:'★',color:'#ffd700',size:16,label:'Capital City'},
+CITY:{icon:'◆',color:'#e0c060',size:13,label:'City'},
+TOWN:{icon:'●',color:'#c0a040',size:10,label:'Town'},
+VILLAGE:{icon:'•',color:'#a08830',size:7,label:'Village'},
+CASTLE:{icon:'♜',color:'#b0b0b0',size:12,label:'Castle'},
+FORTRESS:{icon:'⛫',color:'#909090',size:11,label:'Fortress'},
+DUNGEON:{icon:'▼',color:'#cc3333',size:10,label:'Dungeon'},
+RUINS:{icon:'◇',color:'#888866',size:9,label:'Ancient Ruins'},
+TOWER:{icon:'▲',color:'#7070cc',size:9,label:'Wizard Tower'},
+TEMPLE:{icon:'†',color:'#ddddaa',size:10,label:'Temple'},
+SHRINE:{icon:'✦',color:'#aaddaa',size:7,label:'Shrine'},
+CAVE:{icon:'○',color:'#806040',size:8,label:'Cave'},
+MINE:{icon:'⛏',color:'#a07030',size:8,label:'Mine'},
+PORT:{icon:'⚓',color:'#4488bb',size:11,label:'Port City'},
+LIGHTHOUSE:{icon:'☀',color:'#ffee88',size:8,label:'Lighthouse'},
+CAMP:{icon:'△',color:'#aa6633',size:7,label:'Encampment'},
+FARM:{icon:'⌂',color:'#88aa44',size:6,label:'Farmstead'},
+INN:{icon:'⌘',color:'#cc9944',size:7,label:'Roadside Inn'},
+BRIDGE:{icon:'═',color:'#998877',size:7,label:'Bridge'},
+MONUMENT:{icon:'⊕',color:'#ccbbaa',size:8,label:'Monument'},
+GROVE:{icon:'❋',color:'#44aa44',size:8,label:'Sacred Grove'},
+DRAGON_LAIR:{icon:'🐉',color:'#ff4444',size:12,label:"Dragon's Lair"},
+TOMB:{icon:'☠',color:'#776655',size:9,label:'Ancient Tomb'},
+OUTPOST:{icon:'⊞',color:'#aa9977',size:8,label:'Military Outpost'},
+TRADING_POST:{icon:'$',color:'#ddaa44',size:8,label:'Trading Post'},
+};
+
+// Name parts for procedural generation
+const PRE=['Aber','Ash','Bael','Black','Bright','Cair','Castle','Cedar','Cold','Crag',
+'Crystal','Dark','Dawn','Deep','Dragon','Dusk','Eagle','East','Elder','Ember',
+'Ever','Fair','Falcon','Far','Fern','Fire','Fog','Frost','Ghost','Glen',
+'Gold','Grand','Gray','Green','Grim','Hallow','Haven','Hawk','High','Holly',
+'Horn','Ice','Iron','Ivy','Jade','King','Lake','Last','Lion','Long',
+'Lost','Lunar','Mist','Moon','Moss','Night','Noble','North','Oak','Old',
+'Pale','Pine','Rain','Raven','Red','Ridge','River','Rock','Rose','Rust',
+'Sage','Salt','Sand','Shadow','Shell','Shield','Shire','Silent','Silver','Sky',
+'Snow','South','Spring','Star','Still','Stone','Storm','Sun','Swan','Swift',
+'Thorn','Thunder','Tide','Tower','Twin','Vale','West','White','Wild','Wind',
+'Winter','Wolf','Wood','Wrath','Wren','Wyrm'];
+
+const SUF=['acre','bank','barrow','bay','berg','borough','bridge','brook','burg','burn',
+'cairn','castle','cliff','combe','cove','crest','crossing','dale','dell','den',
+'derry','dome','downs','fall','fell','ferry','field','fold','ford','forge',
+'fort','gate','glen','grasp','guard','gulf','hall','ham','harbour','haven',
+'heath','helm','hill','hollow','holm','hook','horn','hurst','keep','lake',
+'landing','lea','loch','lodge','march','mark','maw','mead','mere','mill',
+'moor','mount','mouth','nest','pass','peak','pier','point','pool','port',
+'reach','rest','ridge','rise','rock','run','shire','shore','side','song',
+'spire','spring','stead','stone','summit','thorpe','ton','vale','view','ville',
+'wall','ward','warren','watch','water','well','wick','wind','wood','worth'];
+
+const DESCS={
+CAPITAL:['The grand capital','Seat of the throne','Heart of the realm','The jewel of Eldoria','Where kings are crowned'],
+CITY:['A bustling metropolis','Hub of commerce','A city of great renown','Center of culture','A thriving city'],
+TOWN:['A prosperous market town','A charming settlement','Known for its craftsmen','A friendly community','A growing township'],
+VILLAGE:['A quiet hamlet','A peaceful settlement','A small farming community','A quaint village','A rural haven'],
+CASTLE:['An imposing stronghold','A mighty fortification','Seat of a noble house','Guards the borderlands','A towering citadel'],
+FORTRESS:['An ancient military keep','Built to withstand siege','Garrisoned by veterans','Defends the frontier','An impregnable bastion'],
+DUNGEON:['A dark and perilous place','Rumored to hold treasure','Many have entered, few return','Echoes with dark whispers','A labyrinth of horrors'],
+RUINS:['Remnants of a lost age','Crumbling but majestic','Whispers of ancient power','Time-worn stones','A forgotten civilization'],
+TOWER:['Home to a reclusive mage','Arcane energy crackles','Books of forbidden knowledge','Reaches toward the heavens','A beacon of magic'],
+TEMPLE:['A place of worship','Sacred to the old gods','Pilgrims gather here','Healing and blessing','Hallowed ground'],
+SHRINE:['A small sacred site','Offerings are left here','A place of quiet prayer','Blessed by the spirits','Ancient and reverent'],
+CAVE:['A dark cavern system','Strange sounds echo within','Rumored to be inhabited','Natural formations abound','Unexplored depths'],
+MINE:['Rich mineral deposits','Dwarven engineering','Ore carts and tunnels','Deep shafts below','Wealth beneath the earth'],
+PORT:['Ships from distant lands','A busy harbor','The smell of salt and fish','Trade routes converge here','Gateway to the sea'],
+LIGHTHOUSE:['Guides ships to safety','Visible for miles','Keeper watches the storm','A beacon in darkness','Standing against the waves'],
+CAMP:['A temporary settlement','Travelers rest here','Campfires and stories','A waypoint on the road','Shelter from the wild'],
+FARM:['Fields of golden grain','Livestock and orchards','Feeds the nearby town','Humble but vital','Rich fertile soil'],
+INN:['Rest and refreshment','Warm hearth and ale','Tales from travelers','A welcome sight','Comfort on the road'],
+BRIDGE:['Spans a great river','Ancient stone arches','A vital crossing point','Connecting two regions','Tolls are collected'],
+MONUMENT:['Commemorates a battle','Ancient carved stones','A landmark for travelers','History etched in stone','A place of remembrance'],
+GROVE:['Ancient trees whisper','Druids gather here','Nature magic is strong','Dappled sunlight','Sacred to the forest'],
+DRAGON_LAIR:['A terrifying lair','Scorched earth surrounds','Treasure beyond measure','Only the brave dare','The beast slumbers'],
+TOMB:['Resting place of kings','Trapped and guarded','Ancient burial rites','Undead stir within','Sealed for centuries'],
+OUTPOST:['Watches the frontier','Signal fires ready','A small garrison','Eyes of the kingdom','First line of defense'],
+TRADING_POST:['Goods from everywhere','Merchants haggle daily','Exotic wares','A crossroads of trade','Currency flows freely'],
+};
+
+const rng={s:12345,next(){this.s=(this.s*16807+1)&0x7fffffff;return this.s/0x7fffffff}};
+
+function genName(){
+return PRE[Math.floor(rng.next()*PRE.length)]+SUF[Math.floor(rng.next()*SUF.length)];
+}
+
+const locations=[];
+const usedNames=new Set();
+
+function uniqueName(){
+let n;do{n=genName()}while(usedNames.has(n));
+usedNames.add(n);return n;
+}
+
+function isLand(x,y){
+if(x<0||x>=WORLD_W||y<0||y>=WORLD_H)return false;
+const gx=Math.floor(x/TILE),gy=Math.floor(y/TILE);
+return elevGrid[gy*COLS+gx]>-0.05;
+}
+
+function isCoastal(x,y){
+if(!isLand(x,y))return false;
+for(let dy=-20;dy<=20;dy+=10)for(let dx=-20;dx<=20;dx+=10){
+if(!isLand(x+dx,y+dy))return true;
+}return false;
+}
+
+function elevAt(x,y){
+const gx=Math.min(COLS-1,Math.max(0,Math.floor(x/TILE)));
+const gy=Math.min(ROWS-1,Math.max(0,Math.floor(y/TILE)));
+return elevGrid[gy*COLS+gx];
+}
+function moistAt(x,y){
+const gx=Math.min(COLS-1,Math.max(0,Math.floor(x/TILE)));
+const gy=Math.min(ROWS-1,Math.max(0,Math.floor(y/TILE)));
+return moistGrid[gy*COLS+gx];
+}
+
+function placeLocs(type,count,filter){
+let placed=0,attempts=0;
+while(placed<count&&attempts<count*50){
+attempts++;
+const x=50+rng.next()*(WORLD_W-100);
+const y=50+rng.next()*(WORLD_H-100);
+if(!filter(x,y))continue;
+// Check min distance from existing locations
+const minDist=type.size*3;
+let tooClose=false;
+for(const l of locations){
+const d=Math.hypot(l.x-x,l.y-y);
+if(d<minDist){tooClose=true;break}
+}
+if(tooClose)continue;
+const e=elevAt(x,y),m=moistAt(x,y);
+const desc=DESCS[Object.keys(LOC_TYPES).find(k=>LOC_TYPES[k]===type)]||['A notable place'];
+locations.push({x,y,type,name:uniqueName(),desc:desc[Math.floor(rng.next()*desc.length)],
+elev:e,moist:m});
+placed++;
+}
+}
+
+// Place locations with terrain-appropriate filters
+placeLocs(LOC_TYPES.CAPITAL,3,(_x,_y)=>isLand(_x,_y)&&elevAt(_x,_y)>0.02&&elevAt(_x,_y)<0.25&&moistAt(_x,_y)>0.3);
+placeLocs(LOC_TYPES.CITY,15,(x,y)=>isLand(x,y)&&elevAt(x,y)>0&&elevAt(x,y)<0.3);
+placeLocs(LOC_TYPES.PORT,12,(x,y)=>isCoastal(x,y)&&elevAt(x,y)>-0.02&&elevAt(x,y)<0.1);
+placeLocs(LOC_TYPES.TOWN,40,(x,y)=>isLand(x,y)&&elevAt(x,y)>0&&elevAt(x,y)<0.35);
+placeLocs(LOC_TYPES.VILLAGE,80,(x,y)=>isLand(x,y)&&elevAt(x,y)>0&&elevAt(x,y)<0.3);
+placeLocs(LOC_TYPES.CASTLE,18,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.1&&elevAt(x,y)<0.45);
+placeLocs(LOC_TYPES.FORTRESS,10,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.15&&elevAt(x,y)<0.5);
+placeLocs(LOC_TYPES.DUNGEON,25,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.05);
+placeLocs(LOC_TYPES.RUINS,20,(x,y)=>isLand(x,y)&&elevAt(x,y)>0);
+placeLocs(LOC_TYPES.TOWER,15,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.08&&elevAt(x,y)<0.4);
+placeLocs(LOC_TYPES.TEMPLE,12,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.02&&elevAt(x,y)<0.35);
+placeLocs(LOC_TYPES.SHRINE,20,(x,y)=>isLand(x,y)&&elevAt(x,y)>0);
+placeLocs(LOC_TYPES.CAVE,18,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.2);
+placeLocs(LOC_TYPES.MINE,12,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.25&&elevAt(x,y)<0.55);
+placeLocs(LOC_TYPES.LIGHTHOUSE,8,(x,y)=>isCoastal(x,y));
+placeLocs(LOC_TYPES.CAMP,25,(x,y)=>isLand(x,y)&&elevAt(x,y)>0);
+placeLocs(LOC_TYPES.FARM,30,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.02&&elevAt(x,y)<0.2&&moistAt(x,y)>0.35);
+placeLocs(LOC_TYPES.INN,20,(x,y)=>isLand(x,y)&&elevAt(x,y)>0&&elevAt(x,y)<0.3);
+placeLocs(LOC_TYPES.BRIDGE,10,(x,y)=>isLand(x,y)&&elevAt(x,y)>-0.02&&elevAt(x,y)<0.1);
+placeLocs(LOC_TYPES.MONUMENT,12,(x,y)=>isLand(x,y)&&elevAt(x,y)>0);
+placeLocs(LOC_TYPES.GROVE,15,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.05&&moistAt(x,y)>0.5);
+placeLocs(LOC_TYPES.DRAGON_LAIR,5,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.35);
+placeLocs(LOC_TYPES.TOMB,15,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.05);
+placeLocs(LOC_TYPES.OUTPOST,18,(x,y)=>isLand(x,y)&&elevAt(x,y)>0.05);
+placeLocs(LOC_TYPES.TRADING_POST,12,(x,y)=>isLand(x,y)&&elevAt(x,y)>0&&elevAt(x,y)<0.25);
+
+// Name the kingdom regions
+const REGIONS=['The Ashen Wastes','Silverwind Plains','The Whispering Woods','Stormbreak Mountains',
+'The Golden Reach','Thornvale','The Frozen North','Duskhollow Marshes','Sunfire Desert',
+'The Emerald Coast','Ironforge Highlands','The Shattered Isles','Moonrise Valley',
+'The Crimson Peaks','Starfall Basin','The Wraithwood','Thunderhorn Ridge','Crystal Lake Province'];
+
+
+// ========== RENDERING ==========
+const canvas=document.getElementById('map');
+const ctx=canvas.getContext('2d');
+const mmCanvas=document.getElementById('minimap');
+const mmCtx=mmCanvas.getContext('2d');
+
+let W,H;
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
+resize();
+window.addEventListener('resize',()=>{resize();renderMinimap();needsRender=true});
+
+// Camera
+let camX=WORLD_W/2,camY=WORLD_H/2,zoom=1;
+const MIN_ZOOM=0.3,MAX_ZOOM=6;
+
+// Pre-render terrain to offscreen canvas
+const offscreen=document.createElement('canvas');
+offscreen.width=COLS;offscreen.height=ROWS;
+const offCtx=offscreen.getContext('2d');
+const imgData=offCtx.createImageData(COLS,ROWS);
+
+function hexToRgb(hex){
+const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+return[r,g,b];
+}
+
+for(let y=0;y<ROWS;y++){
+for(let x=0;x<COLS;x++){
+const idx=y*COLS+x;
+const t=terrainGrid[idx];
+const[r,g,b]=hexToRgb(t.color);
+// Add subtle variation
+const v=(noise3.noise2D(x*0.1,y*0.1)*10)|0;
+const pi=(y*COLS+x)*4;
+imgData.data[pi]=Math.max(0,Math.min(255,r+v));
+imgData.data[pi+1]=Math.max(0,Math.min(255,g+v));
+imgData.data[pi+2]=Math.max(0,Math.min(255,b+v));
+imgData.data[pi+3]=255;
+}}
+offCtx.putImageData(imgData,0,0);
+
+// Render minimap
+function renderMinimap(){
+const mw=150,mh=120;
+mmCanvas.width=mw;mmCanvas.height=mh;
+mmCtx.drawImage(offscreen,0,0,COLS,ROWS,0,0,mw,mh);
+}
+renderMinimap();
+
+function updateMinimapViewport(){
+const mw=150,mh=120;
+const sx=mw/WORLD_W,sy=mh/WORLD_H;
+renderMinimap();
+// Draw viewport rect
+const vx=(camX-W/(2*zoom))*sx;
+const vy=(camY-H/(2*zoom))*sy;
+const vw=(W/zoom)*sx;
+const vh=(H/zoom)*sy;
+mmCtx.strokeStyle='#d4af37';
+mmCtx.lineWidth=2;
+mmCtx.strokeRect(vx,vy,vw,vh);
+}
+
+// Tree/mountain decorations
+function drawTree(ctx,x,y,s,type){
+ctx.save();
+if(type==='pine'){
+ctx.fillStyle='#1a4a2a';
+ctx.beginPath();ctx.moveTo(x,y-s*1.5);ctx.lineTo(x-s*0.6,y+s*0.3);ctx.lineTo(x+s*0.6,y+s*0.3);ctx.fill();
+ctx.fillStyle='#1e3a20';
+ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x-s*0.5,y+s*0.5);ctx.lineTo(x+s*0.5,y+s*0.5);ctx.fill();
+}else if(type==='palm'){
+ctx.strokeStyle='#5a4030';ctx.lineWidth=1.5;
+ctx.beginPath();ctx.moveTo(x,y+s*0.5);ctx.quadraticCurveTo(x+s*0.3,y-s*0.5,x+s*0.2,y-s);ctx.stroke();
+ctx.fillStyle='#2a7a2a';
+for(let i=0;i<5;i++){const a=i*1.25-2.5;ctx.beginPath();ctx.ellipse(x+s*0.2,y-s,s*0.8,s*0.15,a,0,Math.PI*2);ctx.fill()}
+}else{
+ctx.fillStyle='#3a2a15';ctx.fillRect(x-1,y-s*0.2,2,s*0.6);
+ctx.fillStyle=type==='dark'?'#1a5010':'#2a6a1e';
+ctx.beginPath();ctx.arc(x,y-s*0.5,s*0.7,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=type==='dark'?'#155a0a':'#338822';
+ctx.beginPath();ctx.arc(x-s*0.2,y-s*0.6,s*0.4,0,Math.PI*2);ctx.fill();
+}
+ctx.restore();
+}
+
+function drawMountain(ctx,x,y,s,snowy){
+ctx.save();
+ctx.fillStyle='#5a5a5a';
+ctx.beginPath();ctx.moveTo(x,y-s*1.2);ctx.lineTo(x-s,y+s*0.4);ctx.lineTo(x+s,y+s*0.4);ctx.fill();
+ctx.fillStyle='#6a6a6a';
+ctx.beginPath();ctx.moveTo(x,y-s*1.2);ctx.lineTo(x+s*0.15,y-s*0.4);ctx.lineTo(x+s,y+s*0.4);ctx.fill();
+if(snowy){
+ctx.fillStyle='#dde8ee';
+ctx.beginPath();ctx.moveTo(x,y-s*1.2);ctx.lineTo(x-s*0.3,y-s*0.5);ctx.lineTo(x+s*0.3,y-s*0.5);ctx.fill();
+}
+ctx.restore();
+}
+
+// Generate decoration positions
+const decorations=[];
+for(let y=0;y<ROWS;y+=3){
+for(let x=0;x<COLS;x+=3){
+const idx=y*COLS+x;
+const t=terrainGrid[idx];
+const wx=x*TILE,wy=y*TILE;
+const r=noise4.noise2D(x*0.5,y*0.5);
+if(t===TERRAINS.FOREST&&r>0.1)decorations.push({x:wx,y:wy,type:'tree',sub:'normal',s:4+rng.next()*3});
+if(t===TERRAINS.DENSE_FOREST&&r>-0.1)decorations.push({x:wx,y:wy,type:'tree',sub:'dark',s:4+rng.next()*3});
+if(t===TERRAINS.PINE_FOREST&&r>0)decorations.push({x:wx,y:wy,type:'tree',sub:'pine',s:4+rng.next()*3});
+if(t===TERRAINS.JUNGLE&&r>0.05)decorations.push({x:wx,y:wy,type:'tree',sub:'palm',s:5+rng.next()*3});
+if((t===TERRAINS.MOUNTAIN||t===TERRAINS.HIGH_MOUNTAIN)&&r>0.1)decorations.push({x:wx,y:wy,type:'mountain',snowy:false,s:6+rng.next()*5});
+if(t===TERRAINS.SNOW_PEAK&&r>0)decorations.push({x:wx,y:wy,type:'mountain',snowy:true,s:7+rng.next()*5});
+}}
+
+let needsRender=true;
+
+function render(){
+ctx.save();
+ctx.fillStyle='#0a1628';
+ctx.fillRect(0,0,W,H);
+
+// Transform
+const tx=W/2-camX*zoom;
+const ty=H/2-camY*zoom;
+ctx.translate(tx,ty);
+ctx.scale(zoom,zoom);
+
+// Draw terrain
+ctx.imageSmoothingEnabled=zoom<2;
+ctx.drawImage(offscreen,0,0,COLS,ROWS,0,0,WORLD_W,WORLD_H);
+
+// Draw grid lines at high zoom
+if(zoom>2){
+ctx.strokeStyle='rgba(255,255,255,0.03)';
+ctx.lineWidth=0.5;
+const step=50;
+const sx=Math.max(0,Math.floor((camX-W/(2*zoom))/step)*step);
+const sy=Math.max(0,Math.floor((camY-H/(2*zoom))/step)*step);
+const ex=Math.min(WORLD_W,camX+W/(2*zoom));
+const ey=Math.min(WORLD_H,camY+H/(2*zoom));
+for(let x=sx;x<=ex;x+=step){ctx.beginPath();ctx.moveTo(x,sy);ctx.lineTo(x,ey);ctx.stroke()}
+for(let y=sy;y<=ey;y+=step){ctx.beginPath();ctx.moveTo(sx,y);ctx.lineTo(ex,y);ctx.stroke()}
+}
+
+// Visible area for culling
+const vx1=camX-W/(2*zoom)-50;
+const vy1=camY-H/(2*zoom)-50;
+const vx2=camX+W/(2*zoom)+50;
+const vy2=camY+H/(2*zoom)+50;
+
+// Draw decorations if zoomed in enough
+if(zoom>0.6){
+const ds=Math.min(1,zoom/1.5);
+for(const d of decorations){
+if(d.x<vx1||d.x>vx2||d.y<vy1||d.y>vy2)continue;
+if(d.type==='tree')drawTree(ctx,d.x,d.y,d.s*ds,d.sub);
+else if(d.type==='mountain')drawMountain(ctx,d.x,d.y,d.s*ds,d.snowy);
+}
+}
+
+// Draw roads between nearby towns/cities
+if(zoom>0.4){
+ctx.strokeStyle='rgba(139,119,90,0.3)';
+ctx.lineWidth=1.5/zoom;
+ctx.setLineDash([4/zoom,4/zoom]);
+const major=locations.filter(l=>l.type===LOC_TYPES.CAPITAL||l.type===LOC_TYPES.CITY||l.type===LOC_TYPES.PORT||l.type===LOC_TYPES.TOWN);
+for(let i=0;i<major.length;i++){
+for(let j=i+1;j<major.length;j++){
+const d=Math.hypot(major[i].x-major[j].x,major[i].y-major[j].y);
+if(d<200){
+ctx.beginPath();ctx.moveTo(major[i].x,major[i].y);ctx.lineTo(major[j].x,major[j].y);ctx.stroke();
+}
+}}
+ctx.setLineDash([]);
+}
+
+// Draw locations
+for(const loc of locations){
+if(loc.x<vx1||loc.x>vx2||loc.y<vy1||loc.y>vy2)continue;
+const s=loc.type.size/zoom*0.7;
+if(s<1.5)continue; // Too small to see
+
+// Glow
+ctx.shadowColor=loc.type.color;
+ctx.shadowBlur=4;
+
+ctx.fillStyle=loc.type.color;
+ctx.font=`bold ${Math.max(8,loc.type.size*Math.min(zoom,2))}px serif`;
+ctx.textAlign='center';
+ctx.textBaseline='middle';
+ctx.fillText(loc.type.icon,loc.x,loc.y);
+
+ctx.shadowBlur=0;
+
+// Labels
+if(zoom>1||(zoom>0.6&&(loc.type===LOC_TYPES.CAPITAL||loc.type===LOC_TYPES.CITY||loc.type===LOC_TYPES.PORT))){
+const fs=Math.max(6,Math.min(14,10*zoom));
+ctx.font=`${loc.type===LOC_TYPES.CAPITAL?'bold ':''}${fs}px 'Segoe UI',sans-serif`;
+ctx.fillStyle='rgba(255,250,240,0.9)';
+ctx.strokeStyle='rgba(0,0,0,0.7)';
+ctx.lineWidth=2.5;
+ctx.strokeText(loc.name,loc.x,loc.y+loc.type.size*Math.min(zoom,2)*0.7+8);
+ctx.fillText(loc.name,loc.x,loc.y+loc.type.size*Math.min(zoom,2)*0.7+8);
+}
+}
+
+// Region labels at low zoom
+if(zoom<0.8){
+ctx.font=`italic ${20/zoom}px serif`;
+ctx.fillStyle='rgba(212,175,55,0.15)';
+ctx.textAlign='center';
+for(let i=0;i<REGIONS.length;i++){
+const rx=200+(i%5)*420+noise1.noise2D(i,0)*100;
+const ry=200+Math.floor(i/5)*380+noise1.noise2D(0,i)*100;
+if(rx>0&&rx<WORLD_W&&ry>0&&ry<WORLD_H)ctx.fillText(REGIONS[i],rx,ry);
+}
+}
+
+ctx.restore();
+
+// Coordinates display
+const wx=camX|0,wy=camY|0;
+document.getElementById('coords').textContent=`[${wx}, ${wy}] Zoom: ${zoom.toFixed(1)}x | ${locations.length} locations`;
+
+updateMinimapViewport();
+}
+
+
+// ========== INPUT HANDLING ==========
+let isDragging=false,lastX,lastY;
+let pinchDist=0;
+
+canvas.addEventListener('mousedown',e=>{isDragging=true;lastX=e.clientX;lastY=e.clientY});
+canvas.addEventListener('mousemove',e=>{
+if(isDragging){
+camX-=(e.clientX-lastX)/zoom;
+camY-=(e.clientY-lastY)/zoom;
+lastX=e.clientX;lastY=e.clientY;
+needsRender=true;
+}
+// Tooltip
+const wx=(e.clientX-W/2)/zoom+camX;
+const wy=(e.clientY-H/2)/zoom+camY;
+let found=null;
+for(const loc of locations){
+const d=Math.hypot(loc.x-wx,loc.y-wy);
+if(d<15/zoom){found=loc;break}
+}
+const tt=document.getElementById('tooltip');
+if(found){
+tt.style.display='block';
+tt.style.left=(e.clientX+15)+'px';
+tt.style.top=(e.clientY-10)+'px';
+if(e.clientX>W-280)tt.style.left=(e.clientX-265)+'px';
+if(e.clientY>H-120)tt.style.top=(e.clientY-120)+'px';
+tt.querySelector('.tt-name').textContent=found.name;
+tt.querySelector('.tt-type').textContent=found.type.label;
+tt.querySelector('.tt-desc').textContent=found.desc;
+}else{tt.style.display='none'}
+});
+canvas.addEventListener('mouseup',()=>{isDragging=false});
+canvas.addEventListener('mouseleave',()=>{isDragging=false});
+
+canvas.addEventListener('wheel',e=>{
+e.preventDefault();
+const zf=e.deltaY>0?0.9:1.1;
+zoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,zoom*zf));
+needsRender=true;
+},{passive:false});
+
+// Touch support
+canvas.addEventListener('touchstart',e=>{
+e.preventDefault();
+if(e.touches.length===1){
+isDragging=true;lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
+}else if(e.touches.length===2){
+isDragging=false;
+pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+}
+},{passive:false});
+
+canvas.addEventListener('touchmove',e=>{
+e.preventDefault();
+if(e.touches.length===1&&isDragging){
+camX-=(e.touches[0].clientX-lastX)/zoom;
+camY-=(e.touches[0].clientY-lastY)/zoom;
+lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
+needsRender=true;
+}else if(e.touches.length===2){
+const nd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+const zf=nd/pinchDist;
+zoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,zoom*zf));
+pinchDist=nd;
+// Pan to center of pinch
+const cx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+const cy=(e.touches[0].clientY+e.touches[1].clientY)/2;
+needsRender=true;
+}
+},{passive:false});
+
+canvas.addEventListener('touchend',e=>{isDragging=false});
+
+// Tap to show tooltip on mobile
+canvas.addEventListener('click',e=>{
+const wx=(e.clientX-W/2)/zoom+camX;
+const wy=(e.clientY-H/2)/zoom+camY;
+let found=null;
+for(const loc of locations){
+const d=Math.hypot(loc.x-wx,loc.y-wy);
+if(d<20/zoom){found=loc;break}
+}
+const tt=document.getElementById('tooltip');
+if(found){
+tt.style.display='block';
+tt.style.left=Math.min(e.clientX+10,W-260)+'px';
+tt.style.top=Math.min(e.clientY-10,H-130)+'px';
+tt.querySelector('.tt-name').textContent=found.name;
+tt.querySelector('.tt-type').textContent=found.type.label;
+tt.querySelector('.tt-desc').textContent=found.desc;
+setTimeout(()=>tt.style.display='none',4000);
+}else{tt.style.display='none'}
+});
+
+// Button controls
+document.getElementById('zoomIn').addEventListener('click',()=>{zoom=Math.min(MAX_ZOOM,zoom*1.3);needsRender=true});
+document.getElementById('zoomOut').addEventListener('click',()=>{zoom=Math.max(MIN_ZOOM,zoom/1.3);needsRender=true});
+document.getElementById('resetBtn').addEventListener('click',()=>{camX=WORLD_W/2;camY=WORLD_H/2;zoom=1;needsRender=true});
+
+// Minimap click navigation
+mmCanvas.addEventListener('click',e=>{
+const rect=mmCanvas.getBoundingClientRect();
+const mx=(e.clientX-rect.left)/150*WORLD_W;
+const my=(e.clientY-rect.top)/120*WORLD_H;
+camX=mx;camY=my;needsRender=true;
+});
+
+// Search
+const searchInput=document.getElementById('searchInput');
+const searchResults=document.getElementById('searchResults');
+
+searchInput.addEventListener('input',()=>{
+const q=searchInput.value.toLowerCase().trim();
+searchResults.innerHTML='';
+if(q.length<2){searchResults.style.display='none';return}
+const matches=locations.filter(l=>l.name.toLowerCase().includes(q)||l.type.label.toLowerCase().includes(q)).slice(0,10);
+if(matches.length===0){searchResults.style.display='none';return}
+searchResults.style.display='block';
+for(const m of matches){
+const div=document.createElement('div');
+div.textContent=`${m.type.icon} ${m.name} (${m.type.label})`;
+div.addEventListener('click',()=>{
+camX=m.x;camY=m.y;zoom=3;
+searchInput.value='';searchResults.style.display='none';
+needsRender=true;
+});
+searchResults.appendChild(div);
+}
+});
+
+searchInput.addEventListener('blur',()=>setTimeout(()=>searchResults.style.display='none',200));
+
+// Build legend
+const legendDiv=document.getElementById('legend');
+const legendTypes=[
+{c:TERRAINS.DEEP_OCEAN.color,n:'Ocean'},{c:TERRAINS.SHALLOW.color,n:'Shallow Water'},
+{c:TERRAINS.BEACH.color,n:'Beach'},{c:TERRAINS.DESERT.color,n:'Desert'},
+{c:TERRAINS.GRASSLAND.color,n:'Grassland'},{c:TERRAINS.PLAINS.color,n:'Plains'},
+{c:TERRAINS.FOREST.color,n:'Forest'},{c:TERRAINS.DENSE_FOREST.color,n:'Dense Forest'},
+{c:TERRAINS.SWAMP.color,n:'Swamp'},{c:TERRAINS.HILLS.color,n:'Hills'},
+{c:TERRAINS.MOUNTAIN.color,n:'Mountains'},{c:TERRAINS.SNOW_PEAK.color,n:'Snow Peaks'},
+];
+for(const lt of legendTypes){
+legendDiv.innerHTML+=`<div><span style="background:${lt.c}"></span>${lt.n}</div>`;
+}
+
+// Animation loop
+function loop(){
+if(needsRender){render();needsRender=false}
+requestAnimationFrame(loop);
+}
+needsRender=true;
+loop();
+
+// Keyboard navigation
+document.addEventListener('keydown',e=>{
+const spd=30/zoom;
+if(e.key==='ArrowLeft'||e.key==='a'){camX-=spd;needsRender=true}
+if(e.key==='ArrowRight'||e.key==='d'){camX+=spd;needsRender=true}
+if(e.key==='ArrowUp'||e.key==='w'){camY-=spd;needsRender=true}
+if(e.key==='ArrowDown'||e.key==='s'){camY+=spd;needsRender=true}
+if(e.key==='='||e.key==='+'){zoom=Math.min(MAX_ZOOM,zoom*1.1);needsRender=true}
+if(e.key==='-'){zoom=Math.max(MIN_ZOOM,zoom/1.1);needsRender=true}
+});
+
+console.log(`Fantasy World Map loaded: ${locations.length} locations across ${Object.keys(TERRAINS).length} terrain types`);
+</script>
+</body>
+</html>
